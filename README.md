@@ -6,7 +6,13 @@
 
 A web app for Pokémon TCG collectors to generate placeholder cards for missing cards in their binder. Built for collectors, by a collector.
 
-![App Screenshot](https://via.placeholder.com/800x400?text=TCG+Master+Set+Gen)
+![Landing Page](./src/assets/screenshots/landing.png)
+
+### Screenshots
+
+| Landing Page | Set View | Print Preview |
+|:---:|:---:|:---:|
+| ![Landing](./src/assets/screenshots/landing.png) | ![Set](./src/assets/screenshots/set.png) | ![Printing](./src/assets/screenshots/printing.png) |
 
 ## ✨ Features
 
