@@ -1,25 +1,28 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <link rel="manifest" href="/TcgPlaceholderGen/manifest.json" />
-    <meta name="theme-color" content="#0f172a" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TCG Master Set Placeholder Generator</title>
-    <meta name="description" content="Generate printable placeholders for TCG master sets" />
-    <link rel="apple-touch-icon" href="/TcgPlaceholderGen/icon-192.png" />
-    <script type="module" crossorigin src="/TcgPlaceholderGen/assets/index-DwZ_YTqF.js"></script>
-    <link rel="stylesheet" crossorigin href="/TcgPlaceholderGen/assets/index-DkaNiIBs.css">
-  </head>
-  <body class="bg-slate-950 text-slate-50 antialiased">
-    <div id="root"></div>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js');
-        });
-      }
-    </script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/TcgPlaceholderGen/pokeball.svg" />
+  <link rel="manifest" href="/TcgPlaceholderGen/manifest.json" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TCG Master Set Placeholder Generator</title>
+  <meta name="description" content="Generate printable placeholders for TCG master sets" />
+  <link rel="apple-touch-icon" href="/TcgPlaceholderGen/icon-192.png" />
+  <script type="module" crossorigin src="/TcgPlaceholderGen/assets/index-DwZ_YTqF.js"></script>
+  <link rel="stylesheet" crossorigin href="/TcgPlaceholderGen/assets/index-DkaNiIBs.css">
+</head>
+
+<body class="bg-slate-950 text-slate-50 antialiased">
+  <div id="root"></div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/TcgPlaceholderGen/sw.js');
+      });
+    }
+  </script>
+</body>
+
 </html>

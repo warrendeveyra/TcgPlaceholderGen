@@ -1,8 +1,9 @@
 // Service Worker for TCG Master Set Generator
-const CACHE_NAME = 'tcg-gen-v1';
+const CACHE_NAME = 'tcg-gen-v2';
+const BASE_PATH = '/TcgPlaceholderGen/';
 const urlsToCache = [
-    '/',
-    '/index.html',
+    BASE_PATH,
+    BASE_PATH + 'index.html',
 ];
 
 self.addEventListener('install', (event) => {
