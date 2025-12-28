@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { X, Search, Loader2, ChevronDown, ChevronUp, Eye, Plus, Minus } from 'lucide-react';
 import { PokemonCard } from '../types/pokemon';
@@ -7,6 +7,7 @@ import { addCustomCard, getCustomCardsBySet, deleteCustomCard } from '../service
 import { useSetContext } from '../context/SetContext';
 import CardImage from './CardImage';
 import CardPreviewModal from './CardPreviewModal';
+import VariationPicker from './VariationPicker';
 import { isReverseHoloEligible } from '../utils/pokemonUtils';
 
 interface AddCardModalProps {
@@ -29,15 +30,25 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
     // Track custom card IDs for removal: card.id -> [customCardId1, customCardId2, ...]
     const [addedCardIds, setAddedCardIds] = useState<Map<string, string[]>>(new Map());
     const [variationPickerCard, setVariationPickerCard] = useState<PokemonCard | null>(null);
+    const [fetchingCardDetails, setFetchingCardDetails] = useState(false);
 
     const { sets: officialSets } = useSetContext();
+
+    // Sort sets by release date (newest first) for display and selection
+    const sortedSets = useMemo(() => {
+        return [...officialSets].sort((a, b) => {
+            const dateA = a.releaseDate || '1999-01-01';
+            const dateB = b.releaseDate || '1999-01-01';
+            return dateB.localeCompare(dateA);
+        });
+    }, [officialSets]);
 
     // Initialize existing card quantities and default sets on mount
     useEffect(() => {
         if (isOpen) {
-            // Pre-select first 5 physical sets if none selected
-            if (selectedSets.size === 0 && officialSets.length > 0) {
-                const defaultSets = officialSets.slice(0, 5).map(s => s.id);
+            // Pre-select newest 5 sets if none selected
+            if (selectedSets.size === 0 && sortedSets.length > 0) {
+                const defaultSets = sortedSets.slice(0, 5).map(s => s.id);
                 setSelectedSets(new Set(defaultSets));
             }
 
@@ -177,7 +188,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
     };
 
     // Add one copy of a card with specific variation
-    const handleAddOne = (card: PokemonCard, variation: 'Normal' | 'Reverse' = 'Normal') => {
+    const handleAddOne = (card: PokemonCard, variation: string = 'Normal') => {
         const newCard = addCustomCard(
             setId,
             card.name,
@@ -253,7 +264,29 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
         });
     };
 
+    // Open variation picker - fetch full card details for accurate Trainer detection
+    const openVariationPicker = async (card: PokemonCard) => {
+        setFetchingCardDetails(true);
+        try {
+            // Fetch full card data to get accurate trainerType
+            const result = await pokemonTcgApi.getCardById(card.id);
+            if (result.data) {
+                // Use fetched card with accurate supertype
+                setVariationPickerCard(result.data);
+            } else {
+                // Fallback to original card if fetch fails
+                setVariationPickerCard(card);
+            }
+        } catch (error) {
+            console.error('Error fetching card details:', error);
+            setVariationPickerCard(card);
+        } finally {
+            setFetchingCardDetails(false);
+        }
+    };
+
     if (!isOpen) return null;
+
 
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
@@ -310,7 +343,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-                                {officialSets.map((set) => (
+                                {sortedSets.map((set) => (
                                     <label
                                         key={set.id}
                                         className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all ${selectedSets.has(set.id)
@@ -408,7 +441,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
                                             <div onClick={() => {
                                                 if (qty === 0) {
                                                     if (isReverseHoloEligible(card)) {
-                                                        setVariationPickerCard(card);
+                                                        openVariationPicker(card);
                                                     } else {
                                                         handleAddOne(card);
                                                     }
@@ -454,7 +487,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 if (isReverseHoloEligible(card)) {
-                                                                    setVariationPickerCard(card);
+                                                                    openVariationPicker(card);
                                                                 } else {
                                                                     handleAddOne(card);
                                                                 }
@@ -520,60 +553,27 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
                 </div>
             </motion.div>
 
+            {/* Loading Overlay for Card Details */}
+            {fetchingCardDetails && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 flex flex-col items-center gap-3">
+                        <Loader2 className="w-8 h-8 text-pokemon-blue animate-spin" />
+                        <p className="text-white text-sm">Loading card details...</p>
+                    </div>
+                </div>
+            )}
+
             {/* Variation Picker Overlay */}
             {variationPickerCard && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
-                    >
-                        <h4 className="text-lg font-bold text-white mb-2 text-center">Select Version</h4>
-                        <p className="text-slate-400 text-sm mb-6 text-center">
-                            This card is eligible for a Reverse Holo version. Which one would you like to add?
-                        </p>
-
-                        <div className="grid grid-cols-1 gap-3">
-                            <button
-                                onClick={() => {
-                                    handleAddOne(variationPickerCard, 'Normal');
-                                    setVariationPickerCard(null);
-                                }}
-                                className="w-full py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white font-semibold transition-all flex items-center justify-between"
-                            >
-                                <span>Standard Version</span>
-                                <div className="w-4 h-4 rounded-full border border-slate-500" />
-                            </button>
-                            <button
-                                onClick={() => {
-                                    handleAddOne(variationPickerCard, 'Reverse');
-                                    setVariationPickerCard(null);
-                                }}
-                                className="w-full py-3 px-4 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 rounded-xl text-red-100 font-semibold transition-all flex items-center justify-between"
-                            >
-                                <span>Reverse Holo</span>
-                                <div className="px-1.5 py-0.5 rounded bg-red-600 text-[10px] font-black uppercase">Rev</div>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    handleAddOne(variationPickerCard, 'Normal');
-                                    handleAddOne(variationPickerCard, 'Reverse');
-                                    setVariationPickerCard(null);
-                                }}
-                                className="w-full py-3 px-4 bg-pokemon-blue/20 hover:bg-pokemon-blue/30 border border-pokemon-blue/50 rounded-xl text-pokemon-blue font-bold transition-all flex items-center justify-between"
-                            >
-                                <span>Add Both Versions</span>
-                                <Plus className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => setVariationPickerCard(null)}
-                                className="mt-2 w-full py-2 text-slate-500 hover:text-white text-sm transition-colors"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
+                <VariationPicker
+                    card={variationPickerCard}
+                    onSelect={(variation) => {
+                        handleAddOne(variationPickerCard, variation);
+                        setVariationPickerCard(null);
+                    }}
+                    onCancel={() => setVariationPickerCard(null)}
+                    showAddAll={true}
+                />
             )}
 
             {/* Card Preview Modal */}

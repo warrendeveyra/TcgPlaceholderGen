@@ -68,9 +68,9 @@ export const generatePDF = async (
             pdf.addPage(size === 'letter' ? 'letter' : size === 'legal' ? 'legal' : 'a4', orientation);
         }
 
-        // High resolution capture
+        // Optimized resolution capture (1.5 scale is a good balance for print quality vs file size)
         let canvas = await html2canvas(pageElement, {
-            scale: 2,
+            scale: 1.5,
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
@@ -84,7 +84,8 @@ export const generatePDF = async (
             canvas = applyGrayscaleToCanvas(canvas);
         }
 
-        const imgData = canvas.toDataURL('image/png', 1.0);
+        // Use JPEG with 0.8 quality for significant file size reduction
+        const imgData = canvas.toDataURL('image/jpeg', 0.8);
 
         // Use the grid element's dimensions for accurate scaling (usually 190.5mm x 266.7mm)
         const gridElement = pageElement.querySelector('.grid') as HTMLElement;
@@ -94,7 +95,8 @@ export const generatePDF = async (
         const xOffset = (pageWidth - gridWidth) / 2;
         const yOffset = (pageHeight - gridHeight) / 2;
 
-        pdf.addImage(imgData, 'PNG', xOffset, yOffset, gridWidth, gridHeight, undefined, 'FAST');
+        // Specify 'JPEG' and 'FAST' compression for jsPDF
+        pdf.addImage(imgData, 'JPEG', xOffset, yOffset, gridWidth, gridHeight, undefined, 'FAST');
     }
 
     pdf.save(filename);

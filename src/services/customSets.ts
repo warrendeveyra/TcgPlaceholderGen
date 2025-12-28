@@ -13,6 +13,16 @@ export interface CustomCard extends PokemonCard {
     customSetId: string;
 }
 
+/**
+ * Generate a unique ID using timestamp + random hex
+ * Format: prefix-timestamp-randomhex (e.g., "set-1766892899-a3f7b2")
+ */
+const generateUniqueId = (prefix: string): string => {
+    const timestamp = Date.now().toString(36); // Base36 for shorter timestamp
+    const randomHex = Math.random().toString(16).slice(2, 8); // 6 random hex chars
+    return `${prefix}-${timestamp}-${randomHex}`;
+};
+
 // Get all custom sets from localStorage
 export const getCustomSets = (): CustomSet[] => {
     try {
@@ -30,7 +40,7 @@ export const saveCustomSets = (sets: CustomSet[]): void => {
 
 // Create a new custom set
 export const createCustomSet = (name: string, series: string): CustomSet => {
-    const id = `custom-${Date.now()}`;
+    const id = generateUniqueId('set');
     const newSet: CustomSet = {
         id,
         name,
@@ -105,9 +115,9 @@ export const addCustomCard = (
     rarity: string = 'Common',
     imageUrl: string = '',
     sourceCard?: PokemonCard, // Optional: pass full card to preserve set info
-    variation?: 'Reverse' | 'Normal'
+    variation?: string // 'Normal', 'Reverse', 'Poke Ball Holo', 'Master Ball Holo', etc.
 ): CustomCard => {
-    const id = `${setId}-${Date.now()}`;
+    const id = generateUniqueId('card');
     const newCard: CustomCard = {
         id,
         name,
@@ -123,6 +133,7 @@ export const addCustomCard = (
             series: sourceCard.set.series,
             printedTotal: sourceCard.set.printedTotal,
             total: sourceCard.set.total,
+            releaseDate: sourceCard.set.releaseDate || '',
             images: sourceCard.set.images || { symbol: '', logo: '' },
         } : {
             id: setId,
@@ -130,6 +141,7 @@ export const addCustomCard = (
             series: '',
             printedTotal: 0,
             total: 0,
+            releaseDate: new Date().toISOString().split('T')[0],
             images: { symbol: '', logo: '' },
         },
         images: {

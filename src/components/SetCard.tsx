@@ -1,6 +1,7 @@
 import React from 'react';
 import { PokemonSet } from '../types/pokemon';
 import { motion } from 'framer-motion';
+import promoLogo from '../assets/pokemon-promo-set-logo.png';
 
 interface SetCardProps {
     set: PokemonSet;
@@ -8,6 +9,8 @@ interface SetCardProps {
 }
 
 const SetCard: React.FC<SetCardProps> = ({ set, onClick }) => {
+    const isPromoSet = set.name.toLowerCase().includes('promo');
+
     return (
         <motion.div
             whileHover={{ scale: 1.03, y: -5 }}
@@ -34,19 +37,30 @@ const SetCard: React.FC<SetCardProps> = ({ set, onClick }) => {
                         className="max-h-full max-w-full object-contain filter drop-shadow-xl group-hover:scale-110 group-hover:drop-shadow-2xl transition-all duration-500"
                         loading="lazy"
                         onError={(e) => {
-                            const parent = e.currentTarget.parentElement;
-                            e.currentTarget.style.display = 'none';
-                            if (parent) {
-                                const fallback = parent.querySelector('.set-fallback');
-                                if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                            const target = e.currentTarget;
+                            if (isPromoSet) {
+                                target.src = promoLogo;
+                            } else {
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                    const fallback = parent.querySelector('.set-fallback');
+                                    if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                                }
                             }
                         }}
                     />
+                ) : isPromoSet ? (
+                    <img
+                        src={promoLogo}
+                        alt="Promo Set"
+                        className="max-h-full max-w-full object-contain filter drop-shadow-xl group-hover:scale-110 group-hover:drop-shadow-2xl transition-all duration-500"
+                    />
                 ) : null}
 
-                {/* Stylized placeholder for missing images */}
+                {/* Stylized placeholder for missing images (non-promo) */}
                 <div
-                    className={`set-fallback flex-col items-center justify-center text-center px-4 ${set.images.logo ? 'hidden' : 'flex'}`}
+                    className={`set-fallback flex-col items-center justify-center text-center px-4 ${(set.images.logo || isPromoSet) ? 'hidden' : 'flex'}`}
                 >
                     <div className="relative">
                         <div className="absolute inset-0 bg-gradient-to-r from-pokemon-yellow/30 via-pokemon-red/30 to-pokemon-blue/30 blur-2xl rounded-full animate-pulse" />

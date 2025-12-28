@@ -101,7 +101,11 @@ function MainContent() {
 
             <main className="relative w-full max-w-7xl">
                 {selectedSet ? (
-                    <SetDetail set={selectedSet} onBack={() => setSelectedSet(null)} />
+                    <SetDetail
+                        set={selectedSet}
+                        onBack={() => setSelectedSet(null)}
+                        onNavigateToSet={(newSet) => setSelectedSet(newSet)}
+                    />
                 ) : (
                     <>
                         {/* Custom Sets Section */}

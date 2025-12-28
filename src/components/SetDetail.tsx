@@ -1,28 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { PokemonCard, PokemonSet } from '../types/pokemon';
 import { pokemonTcgApi } from '../services/pokemonTcgApi';
-import { getCustomCardsBySet, deleteCustomCard, deleteCustomSet } from '../services/customSets';
-import { ArrowLeft, Loader2, Printer, Plus, Trash2, Eye, AlertTriangle, Edit2 } from 'lucide-react';
+import { getCustomCardsBySet, deleteCustomCard, deleteCustomSet, createCustomSet, addCustomCard } from '../services/customSets';
+import { ArrowLeft, Loader2, Printer, Plus, Trash2, Eye, AlertTriangle, Edit2, Info, Copy } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PrintView from './PrintView';
 import BinderCalculator from './BinderCalculator';
 import AddCardModal from './AddCardModal';
 import CardPreviewModal from './CardPreviewModal';
 import EditCustomSetModal from './EditCustomSetModal';
-import CustomDropdown from './CustomDropdown';
-import { isReverseHoloEligible } from '../utils/pokemonUtils';
+import SuccessModal from './SuccessModal';
 import { useSetContext } from '../context/SetContext';
+import { hasSpecialVariants, getSpecialVariantInfo } from '../utils/variantOverrides';
 
 interface SetDetailProps {
     set: PokemonSet & { isCustom?: boolean };
     onBack: () => void;
+    onNavigateToSet?: (set: PokemonSet & { isCustom?: boolean }) => void;
 }
 
-const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
+const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) => {
     const [cards, setCards] = useState<PokemonCard[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [filterMode, setFilterMode] = useState<'standard' | 'master-mixed'>('standard');
     const [includeFullArts, setIncludeFullArts] = useState(true);
     const [showPrintView, setShowPrintView] = useState(false);
     const [showAddCard, setShowAddCard] = useState(false);
@@ -30,6 +30,8 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
     const [showDeleteSetConfirm, setShowDeleteSetConfirm] = useState(false);
     const [showEditSet, setShowEditSet] = useState(false);
     const [currentSet, setCurrentSet] = useState(set);
+    const [createdCustomSet, setCreatedCustomSet] = useState<(PokemonSet & { isCustom?: boolean }) | null>(null);
+    const [showCreateConfirm, setShowCreateConfirm] = useState(false);
 
     const { refreshCustomSets } = useSetContext();
 
@@ -41,7 +43,7 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
     }, [set]);
 
     const refreshCards = () => {
-        if (isCustomSet) {
+        if (set.isCustom) {
             setCards(getCustomCardsBySet(set.id));
         }
     };
@@ -50,7 +52,7 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
         const fetchCards = async () => {
             try {
                 setLoading(true);
-                if (isCustomSet) {
+                if (set.isCustom) {
                     // Load custom cards from localStorage
                     const customCards = getCustomCardsBySet(set.id);
                     setCards(customCards);
@@ -67,7 +69,7 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
             }
         };
         fetchCards();
-    }, [set.id, isCustomSet]);
+    }, [set.id, set.isCustom]);
 
     const [cardToDelete, setCardToDelete] = useState<PokemonCard | null>(null);
 
@@ -93,47 +95,35 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
             });
         }
 
-        if (filterMode === 'standard') {
+        // For official sets, just return the cards
+        if (!isCustomSet) {
             return baseCards;
         }
 
-        if (filterMode === 'master-mixed') {
-            const mixed: PokemonCard[] = [];
+        // For custom sets, sort cards by number then by variation type
+        // so variants appear next to their normal card
+        const variationOrder: Record<string, number> = {
+            'Normal': 0,
+            'Reverse': 1,
+            'Reverse Holo': 1,
+            'Poke Ball Holo': 2,
+            'Master Ball Holo': 3,
+        };
 
-            if (isCustomSet) {
-                // For custom sets, respect manual entries but fill gaps if needed
-                const hasManualReverse = new Set(
-                    baseCards.filter(c => c.variation === 'Reverse').map(c => `${c.set.id}-${c.number}`)
-                );
+        return [...baseCards].sort((a, b) => {
+            // First sort by card number
+            const numA = parseInt(a.number.replace(/\D/g, '')) || 0;
+            const numB = parseInt(b.number.replace(/\D/g, '')) || 0;
 
-                baseCards.forEach(card => {
-                    const cardKey = `${card.set.id}-${card.number}`;
-
-                    if (card.variation === 'Reverse') {
-                        mixed.push(card);
-                    } else {
-                        // Push normal version
-                        mixed.push({ ...card, variation: 'Normal' });
-
-                        // Add reverse ONLY if it wasn't already added manually in the list
-                        if (isReverseHoloEligible(card) && !hasManualReverse.has(cardKey)) {
-                            mixed.push({ ...card, variation: 'Reverse', id: `${card.id}-rev` });
-                        }
-                    }
-                });
-            } else {
-                // For official sets, use legacy auto-generation logic (all eligible)
-                baseCards.forEach(card => {
-                    mixed.push({ ...card, variation: 'Normal' });
-                    if (isReverseHoloEligible(card)) {
-                        mixed.push({ ...card, variation: 'Reverse', id: `${card.id}-rev` });
-                    }
-                });
+            if (numA !== numB) {
+                return numA - numB;
             }
-            return mixed;
-        }
 
-        return baseCards;
+            // Then sort by variation type
+            const orderA = variationOrder[a.variation || 'Normal'] ?? 99;
+            const orderB = variationOrder[b.variation || 'Normal'] ?? 99;
+            return orderA - orderB;
+        });
     };
 
     const displayCards = getFilteredCards();
@@ -168,7 +158,14 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
                     </button>
                     <div className="flex flex-col">
                         <div className="flex items-center gap-3">
-                            <h2 className="text-3xl font-bold text-white leading-tight">{currentSet.name}</h2>
+                            <h2 className="text-3xl font-bold text-white leading-tight">
+                                {currentSet.name}
+                                {currentSet.releaseDate && (
+                                    <span className="ml-3 text-lg font-medium text-slate-500">
+                                        ({currentSet.releaseDate.split('-')[0]})
+                                    </span>
+                                )}
+                            </h2>
                             {isCustomSet && (
                                 <button
                                     onClick={() => setShowEditSet(true)}
@@ -180,7 +177,13 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
                             )}
                         </div>
                         <p className="text-slate-400 text-sm mt-1">
-                            {isCustomSet ? (currentSet.series || 'Custom') : currentSet.series} • {cards.length} Cards
+                            {!isCustomSet && currentSet.series && currentSet.series !== 'Unknown' && (
+                                <>
+                                    <span className="text-pokemon-blue font-medium">{currentSet.series}</span>
+                                    <span className="mx-2 opacity-50">•</span>
+                                </>
+                            )}
+                            {cards.length} Cards
                         </p>
                     </div>
                 </div>
@@ -188,15 +191,14 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
                 <div className="flex items-center gap-3">
                     {!isCustomSet && (
                         <>
-                            <CustomDropdown
-                                value={filterMode}
-                                onChange={(val) => setFilterMode(val as any)}
-                                options={[
-                                    { label: 'Standard Set', value: 'standard' },
-                                    { label: 'Master Set (Full)', value: 'master-mixed' },
-                                ]}
-                                className="w-48"
-                            />
+                            <button
+                                onClick={() => setShowCreateConfirm(true)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-pokemon-purple/20 hover:bg-pokemon-purple/30 border border-pokemon-purple/50 transition-all text-sm font-medium text-pokemon-purple"
+                                title="Create a custom copy of this set to add variant cards"
+                            >
+                                <Copy className="w-4 h-4" />
+                                Create Custom Set
+                            </button>
 
                             <button
                                 onClick={() => setIncludeFullArts(!includeFullArts)}
@@ -232,6 +234,48 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
 
             <BinderCalculator totalCards={displayCards.length} />
 
+            {/* Disclaimer for Special Sets with Variants */}
+            {!isCustomSet && (
+                (() => {
+                    const hasSpecial = hasSpecialVariants(currentSet.id);
+                    const releaseYear = currentSet.releaseDate ? parseInt(currentSet.releaseDate.split('-')[0]) : 0;
+
+                    if (hasSpecial) {
+                        const variantInfo = getSpecialVariantInfo(currentSet.id);
+                        return (
+                            <div className="mb-6 p-4 rounded-xl bg-pokemon-blue/10 border border-pokemon-blue/30 flex items-start gap-3">
+                                <Info className="w-5 h-5 text-pokemon-blue flex-shrink-0 mt-0.5" />
+                                <div className="text-sm">
+                                    <p className="text-white font-medium mb-1">Special Variant Set</p>
+                                    <p className="text-slate-300">
+                                        {variantInfo?.description || 'This set has special holo variants available.'}
+                                    </p>
+                                    <p className="text-slate-400 mt-2">
+                                        To track variant cards, use "Create Custom Set" and add cards with their specific variants.
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    } else if (releaseYear >= 2002) {
+                        return (
+                            <div className="mb-6 p-4 rounded-xl bg-slate-800/40 border border-slate-700/50 flex items-start gap-3">
+                                <Info className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
+                                <div className="text-sm">
+                                    <p className="text-white font-medium mb-1">Standard Reverse Holo Set</p>
+                                    <p className="text-slate-300">
+                                        This set contains <span className="text-pokemon-purple font-medium">Reverse Holo</span> variants for most Pokémon and Trainer cards.
+                                    </p>
+                                    <p className="text-slate-400 mt-2">
+                                        To track your Master Set, use "Create Custom Set" and manually add the Reverse Holo versions.
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    }
+                    return null;
+                })()
+            )}
+
             {error ? (
                 <div className="p-8 rounded-2xl bg-red-500/10 border border-red-500/20 text-center text-red-400">
                     {error}
@@ -254,7 +298,7 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
                         {displayCards.map((card, index) => (
                             <motion.div
-                                key={card.id}
+                                key={`${currentSet.id}-${card.id}-${index}-${card.variation || 'default'}`}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: Math.min(index * 0.01, 0.5) }}
@@ -296,9 +340,42 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
                                     </button>
 
                                     {/* Variation Badge */}
-                                    {card.variation === 'Reverse' && (
-                                        <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-gradient-to-r from-pokemon-blue to-pokemon-red text-white shadow-lg">
-                                            Reverse
+                                    {card.variation && card.variation !== 'Normal' && (
+                                        <div className="absolute top-1 right-1">
+                                            {card.variation === 'Reverse' || card.variation === 'Reverse Holo' ? (
+                                                <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-gradient-to-r from-pokemon-blue to-pokemon-red text-white shadow-lg">
+                                                    Reverse
+                                                </div>
+                                            ) : card.variation === 'Poke Ball Holo' ? (
+                                                <svg className="w-5 h-5 drop-shadow-lg" viewBox="0 0 24 24">
+                                                    <path d="M12 12 L12 22 A10 10 0 0 1 2 12 Z" fill="white" />
+                                                    <path d="M12 12 L22 12 A10 10 0 0 1 12 22 Z" fill="white" />
+                                                    <path d="M12 12 L12 2 A10 10 0 0 1 22 12 Z" fill="#EF4444" />
+                                                    <path d="M12 12 L2 12 A10 10 0 0 1 12 2 Z" fill="#EF4444" />
+                                                    <rect x="2" y="10.5" width="20" height="3" fill="#1F2937" />
+                                                    <circle cx="12" cy="12" r="4" fill="white" stroke="#1F2937" strokeWidth="2" />
+                                                    <circle cx="12" cy="12" r="2" fill="#E5E7EB" />
+                                                    <circle cx="12" cy="12" r="10" fill="none" stroke="#1F2937" strokeWidth="1.5" />
+                                                </svg>
+                                            ) : card.variation === 'Master Ball Holo' ? (
+                                                <svg className="w-5 h-5 drop-shadow-lg" viewBox="0 0 24 24">
+                                                    <path d="M12 12 L12 22 A10 10 0 0 1 2 12 Z" fill="white" />
+                                                    <path d="M12 12 L22 12 A10 10 0 0 1 12 22 Z" fill="white" />
+                                                    <path d="M12 12 L12 2 A10 10 0 0 1 22 12 Z" fill="#8B5CF6" />
+                                                    <path d="M12 12 L2 12 A10 10 0 0 1 12 2 Z" fill="#8B5CF6" />
+                                                    <circle cx="12" cy="6" r="2.5" fill="#EC4899" />
+                                                    <path d="M6 4 L8 8" stroke="#EC4899" strokeWidth="2" strokeLinecap="round" />
+                                                    <path d="M18 4 L16 8" stroke="#EC4899" strokeWidth="2" strokeLinecap="round" />
+                                                    <rect x="2" y="10.5" width="20" height="3" fill="#1F2937" />
+                                                    <circle cx="12" cy="12" r="4" fill="white" stroke="#1F2937" strokeWidth="2" />
+                                                    <circle cx="12" cy="12" r="2" fill="#E5E7EB" />
+                                                    <circle cx="12" cy="12" r="10" fill="none" stroke="#1F2937" strokeWidth="1.5" />
+                                                </svg>
+                                            ) : (
+                                                <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-slate-600 text-white shadow-lg">
+                                                    {card.variation.slice(0, 3)}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -342,6 +419,18 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
                 card={previewCard}
                 isOpen={!!previewCard}
                 onClose={() => setPreviewCard(null)}
+                customSetId={isCustomSet ? set.id : undefined}
+                onVariantAdded={() => {
+                    refreshCards();
+                    // Keep modal open so user can add more variants
+                }}
+                existingVariations={
+                    previewCard
+                        ? cards
+                            .filter(c => c.number === previewCard.number)
+                            .map(c => c.variation || 'Normal')
+                        : []
+                }
             />
 
             {/* Delete Confirmation Modal */}
@@ -459,6 +548,108 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack }) => {
                     }}
                 />
             )}
+
+            {/* Create Custom Set Confirmation Modal */}
+            {showCreateConfirm && (
+                <div
+                    className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                    onClick={() => setShowCreateConfirm(false)}
+                >
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-gradient-to-br from-slate-900 to-slate-950 border border-pokemon-purple/30 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="text-center">
+                            {/* Copy icon */}
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-pokemon-purple/20 flex items-center justify-center">
+                                <Copy className="w-8 h-8 text-pokemon-purple" />
+                            </div>
+
+                            <h3 className="text-xl font-bold text-white mb-2">Create Custom Set?</h3>
+
+                            <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6 text-left">
+                                <p className="text-white font-medium mb-2">This will create:</p>
+                                <p className="text-slate-400 text-sm mb-3">
+                                    "{currentSet.name} (Custom)" with {cards.length} cards copied from this set.
+                                </p>
+                                <p className="text-slate-400 text-sm">
+                                    You can then add variant cards (Reverse Holo, Poke Ball Holo, Master Ball Holo) to track your complete master set collection.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowCreateConfirm(false)}
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowCreateConfirm(false);
+
+                                        // Create the custom set
+                                        const customSet = createCustomSet(
+                                            `${currentSet.name} (Custom)`,
+                                            currentSet.series
+                                        );
+
+                                        // Copy all cards from the current set to the new custom set
+                                        const displayedCards = getFilteredCards();
+                                        displayedCards.forEach(card => {
+                                            addCustomCard(
+                                                customSet.id,
+                                                card.name,
+                                                card.number,
+                                                card.rarity || 'Common',
+                                                card.images.small,
+                                                card,
+                                                'Normal'
+                                            );
+                                        });
+
+                                        refreshCustomSets();
+                                        // Show success modal
+                                        setCreatedCustomSet({
+                                            ...customSet,
+                                            total: displayedCards.length,
+                                            isCustom: true
+                                        });
+                                    }}
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-pokemon-purple hover:bg-pokemon-purple/80 text-white font-semibold transition-all"
+                                >
+                                    Proceed
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Custom Set Created Success Modal */}
+            <SuccessModal
+                isOpen={!!createdCustomSet}
+                onClose={() => setCreatedCustomSet(null)}
+                title="Custom Set Created!"
+                subtitle={createdCustomSet?.name}
+                description={`${createdCustomSet?.total || 0} cards copied. You can now add variant cards (Reverse Holo, Poke Ball Holo, Master Ball Holo) to track your complete collection.`}
+                accentColor="green"
+                secondaryAction={{
+                    label: "Stay Here",
+                    onClick: () => setCreatedCustomSet(null),
+                }}
+                primaryAction={{
+                    label: "Go to Custom Set",
+                    onClick: () => {
+                        if (onNavigateToSet && createdCustomSet) {
+                            onNavigateToSet(createdCustomSet);
+                        }
+                        setCreatedCustomSet(null);
+                    },
+                }}
+            />
         </div>
     );
 };

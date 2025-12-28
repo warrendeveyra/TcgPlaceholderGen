@@ -43,7 +43,8 @@ export const SetProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const fetchSets = async () => {
         try {
             setLoading(true);
-            const response = await pokemonTcgApi.getSets();
+            // Fetch all sets (high itemsPerPage to get all at once)
+            const response = await pokemonTcgApi.getSets({ itemsPerPage: 1000 });
             setSets(response.data);
             setError(null);
         } catch (err) {

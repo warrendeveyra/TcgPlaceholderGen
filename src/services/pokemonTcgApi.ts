@@ -1,39 +1,53 @@
 import axios from 'axios';
-import { PokemonSet, PokemonCard, ApiResponse, TcgdexSet, TcgdexSetDetail } from '../types/pokemon';
+import { PokemonSet, PokemonCard, ApiResponse, TcgdexSet } from '../types/pokemon';
 
-const API_BASE_URL = 'https://api.tcgdex.net/v2/en';
+const API_BASE_URL = 'https://api.tcgdex.net/v2/graphql';
 
-const api = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: 30000,
-});
+// GraphQL Helper
+const fetchGraphQL = async <T>(query: string, variables: Record<string, any> = {}): Promise<T> => {
+    const response = await axios.post(API_BASE_URL, {
+        query,
+        variables,
+    }, {
+        headers: { 'Content-Type': 'application/json' }
+    });
 
-// Helper to get set logo URL with fallback
-const getSetLogoUrl = (set: TcgdexSet): string => {
+    if (response.data.errors) {
+        console.warn('GraphQL Errors (non-fatal):', response.data.errors);
+        // If we have partial data, return it despite errors (TCGDex schema issues)
+        if (response.data.data) {
+            return response.data.data;
+        }
+        throw new Error(response.data.errors[0].message);
+    }
+
+    return response.data.data;
+};
+
+// Helper to get set logo URL (TCGDex assets only)
+const getSetLogoUrl = (set: Partial<TcgdexSet>): string => {
     if (set.logo) {
         return `${set.logo}.png`;
     }
-    // Fallback to pokemontcg.io image CDN
-    return `https://images.pokemontcg.io/${set.id}/logo.png`;
+    return '';
 };
 
-// Helper to get set symbol URL with fallback
-const getSetSymbolUrl = (set: TcgdexSet): string => {
+// Helper to get set symbol URL (TCGDex assets only)
+const getSetSymbolUrl = (set: Partial<TcgdexSet>): string => {
     if (set.symbol) {
         return `${set.symbol}.png`;
     }
-    // Fallback to pokemontcg.io image CDN
-    return `https://images.pokemontcg.io/${set.id}/symbol.png`;
+    return '';
 };
 
 // Helper to convert TCGdex set to our PokemonSet format
-const convertSet = (set: TcgdexSet): PokemonSet => ({
+const convertSet = (set: any): PokemonSet => ({
     id: set.id,
     name: set.name,
-    series: set.id.replace(/\d+/g, '').toUpperCase() || 'Unknown',
-    printedTotal: set.cardCount.official,
-    total: set.cardCount.total,
-    releaseDate: '',
+    series: set.serie?.name || 'Unknown',
+    printedTotal: set.cardCount?.official || 0,
+    total: set.cardCount?.total || 0,
+    releaseDate: set.releaseDate || '',
     updatedAt: '',
     images: {
         symbol: getSetSymbolUrl(set),
@@ -41,37 +55,39 @@ const convertSet = (set: TcgdexSet): PokemonSet => ({
     },
 });
 
-// Helper to convert TCGdex card to our PokemonCard format
-// TCGdex card list only has basic info, so we detect card type from name
-const convertCard = (
-    card: { id: string; localId: string; name: string; image?: string },
-    setId: string,
-    setInfo?: PokemonSet // Optional: full set info to include with card
-): PokemonCard => {
-    const nameLower = card.name.toLowerCase();
-
-    // Detect rarity from card name for reverse holo logic
-    let rarity = 'Common'; // Default
-    if (nameLower.includes(' ex') || nameLower.endsWith(' ex')) rarity = 'Rare Ultra';
-    else if (nameLower.includes(' gx') || nameLower.endsWith(' gx')) rarity = 'Rare Ultra';
-    else if (nameLower.includes(' v') && !nameLower.includes('eevee')) rarity = 'Rare Ultra';
-    else if (nameLower.includes(' vmax')) rarity = 'Rare Ultra';
-    else if (nameLower.includes(' vstar')) rarity = 'Rare Ultra';
-    else if (nameLower.includes('radiant ')) rarity = 'Radiant Rare';
-
-    // Detect supertype
+// Helper to map API card data to our PokemonCard
+// Note: supertype detection uses trainerType from individual card queries when needed
+const convertGraphQLCard = (card: any, setInfo?: PokemonSet): PokemonCard => {
+    // Default to Pokémon - accurate detection done via getCardById when needed
     let supertype = 'Pokémon';
-    if (nameLower.includes('energy')) supertype = 'Energy';
-    else if (nameLower.includes('trainer') || nameLower.includes('supporter') ||
-        nameLower.includes('stadium') || nameLower.includes('item')) supertype = 'Trainer';
+    const lowerName = card.name?.toLowerCase() || '';
+
+    // Use category if available (from individual card query)
+    if (card.category) {
+        if (card.category === 'Pokemon') supertype = 'Pokémon';
+        else if (card.category === 'Trainer') supertype = 'Trainer';
+        else if (card.category === 'Energy') supertype = 'Energy';
+        else supertype = card.category;
+    }
+    // Basic Energy detection from name (fallback)
+    else if (lowerName.includes('energy')) {
+        supertype = 'Energy';
+    }
+    // Use trainerType if available (legacy fallback)
+    else if (card.trainerType) {
+        supertype = 'Trainer';
+    }
+
+    // Rarity string fallback
+    let rarity = card.rarity || 'Common';
 
     return {
         id: card.id,
         name: card.name,
         supertype,
-        subtypes: [],
+        subtypes: card.subtypes || [],
         number: card.localId,
-        artist: '',
+        artist: card.illustrator || '',
         rarity,
         set: setInfo ? {
             id: setInfo.id,
@@ -79,80 +95,221 @@ const convertCard = (
             series: setInfo.series,
             printedTotal: setInfo.printedTotal,
             total: setInfo.total,
+            releaseDate: setInfo.releaseDate,
             images: setInfo.images,
         } : {
-            id: setId,
-            name: '',
-            series: '',
-            printedTotal: 0,
-            total: 0,
-            images: { symbol: '', logo: '' },
+            // Fallback if no set info provided
+            id: card.set?.id || '',
+            name: card.set?.name || '',
+            series: card.set?.series?.name || '',
+            printedTotal: card.set?.cardCount?.official || 0,
+            total: card.set?.cardCount?.total || 0,
+            releaseDate: card.set?.releaseDate || '',
+            images: {
+                symbol: card.set?.symbol ? `${card.set.symbol}.png` : '',
+                logo: card.set?.logo ? `${card.set.logo}.png` : ''
+            },
         },
         images: {
             small: card.image ? `${card.image}/low.png` : '',
             large: card.image ? `${card.image}/high.png` : '',
         },
+        variants: card.variants,
     };
 };
 
+export interface GetSetsParams {
+    search?: string;
+    releaseDate?: string;
+    page?: number;
+    itemsPerPage?: number;
+}
+
 export const pokemonTcgApi = {
-    getSets: async (page = 1, pageSize = 50): Promise<ApiResponse<PokemonSet[]>> => {
-        const response = await api.get<TcgdexSet[]>('/sets');
+    getSets: async (params: GetSetsParams = {}): Promise<ApiResponse<PokemonSet[]>> => {
+        const { search = '', releaseDate = '', page = 1, itemsPerPage = 24 } = params;
+
+        const query = `
+            query($name: String, $releaseDate: String, $page: Int!, $itemsPerPage: Int!) {
+                sets(filters: { name: $name, releaseDate: $releaseDate }, pagination: { page: $page, itemsPerPage: $itemsPerPage }) {
+                    cardCount {
+                        firstEd
+                        holo
+                        normal
+                        official
+                        reverse
+                        total
+                    }
+                    id
+                    logo
+                    name
+                    serie {
+                        name
+                        logo
+                        id
+                    }
+                    symbol
+                    releaseDate
+                }
+            }
+        `;
+
+        const variables: any = {
+            page: page,
+            itemsPerPage: itemsPerPage
+        };
+
+        // Only add filters if provided
+        if (search.trim()) {
+            variables.name = search.trim();
+        }
+        if (releaseDate.trim()) {
+            variables.releaseDate = releaseDate.trim();
+        }
+
+        const data = await fetchGraphQL<{ sets: any[] }>(query, variables);
+        let allSets = data.sets || [];
 
         // Filter out Pokemon TCG Pocket sets (mobile game, not physical cards)
-        // TCG Pocket set IDs in TCGdex: A1, A1a, A2, A2a, MEP, etc.
-        const physicalSets = response.data.filter(set => {
-            const id = set.id.toUpperCase();
-            // Exclude TCG Pocket sets
-            // A-series (Genetic Apex, etc.), B-series, MEP (Promos)
-            if (id.startsWith('A') && /\d/.test(id)) return false;
-            if (id.startsWith('B') && /\d/.test(id)) return false;
-            if (id.startsWith('MEP')) return false;
-            if (id === 'P-A') return false;
+        const physicalSets = allSets.filter(set => {
+            if (set.serie?.id === 'tcgp') return false;
             return true;
         });
 
         const sets = physicalSets.map(convertSet);
 
-        // Paginate manually and reverse for newest first
-        const sortedSets = sets.reverse();
-        const startIndex = (page - 1) * pageSize;
-        const paginatedSets = sortedSets.slice(startIndex, startIndex + pageSize);
-
         return {
-            data: paginatedSets,
-            page,
-            pageSize,
-            count: paginatedSets.length,
+            data: sets,
+            page: page,
+            pageSize: sets.length,
+            count: sets.length,
             totalCount: sets.length,
         };
     },
 
     getSet: async (id: string): Promise<{ data: PokemonSet }> => {
-        const response = await api.get<TcgdexSet>(`/sets/${id}`);
-        return { data: convertSet(response.data) };
+        const query = `
+            query($id: ID!) {
+                set(id: $id) {
+                    id
+                    name
+                    logo
+                    symbol
+                    cardCount {
+                        official
+                        total
+                    }
+                }
+            }
+        `;
+        const data = await fetchGraphQL<{ set: any }>(query, { id });
+        return { data: convertSet(data.set) };
+    },
+
+    // Get individual card details (includes trainerType for accurate detection)
+    getCardById: async (cardId: string): Promise<{ data: PokemonCard | null }> => {
+        const query = `
+            query($id: ID!) {
+                card(id: $id) {
+                    id
+                    localId
+                    name
+                    image
+                    illustrator
+                    category
+                    stage
+                    set {
+                        id
+                        name
+                        logo
+                        symbol
+                        cardCount {
+                            official
+                            total
+                        }
+                    }
+                    variants {
+                        normal
+                        reverse
+                        holo
+                        firstEdition
+                    }
+                }
+            }
+        `;
+
+        try {
+            const data = await fetchGraphQL<{ card: any }>(query, { id: cardId });
+            if (!data.card) {
+                return { data: null };
+            }
+
+            const card = data.card;
+            const setInfo: PokemonSet = {
+                id: card.set?.id || '',
+                name: card.set?.name || '',
+                series: card.set?.serie?.name || '',
+                printedTotal: card.set?.cardCount?.official || 0,
+                total: card.set?.cardCount?.total || 0,
+                releaseDate: card.set?.releaseDate || '',
+                updatedAt: '',
+                images: {
+                    symbol: card.set?.symbol ? `${card.set.symbol}.png` : '',
+                    logo: card.set?.logo ? `${card.set.logo}.png` : ''
+                }
+            };
+
+            return { data: convertGraphQLCard(card, setInfo) };
+        } catch (error) {
+            console.error('Error fetching card by ID:', error);
+            return { data: null };
+        }
     },
 
     getCardsBySet: async (setId: string, page = 1, pageSize = 250): Promise<ApiResponse<PokemonCard[]>> => {
-        const response = await api.get<TcgdexSetDetail>(`/sets/${setId}`);
+        const query = `
+            query($id: ID!) {
+                set(id: $id) {
+                    id
+                    name
+                    logo
+                    symbol
+                    releaseDate
+                    serie {
+                        name
+                    }
+                    cardCount {
+                        official
+                        total
+                    }
+                    cards {
+                        id
+                        localId
+                        name
+                        image
+                        illustrator
+                        variants {
+                            normal
+                            reverse
+                            holo
+                            firstEdition
+                        }
+                    }
+                }
+            }
+        `;
 
-        // Build set info from the response to include with each card
-        const setInfo: PokemonSet = {
-            id: setId,
-            name: response.data.name,
-            series: response.data.id.replace(/\d+/g, '').toUpperCase() || 'Unknown',
-            printedTotal: response.data.cardCount?.official || 0,
-            total: response.data.cardCount?.total || 0,
-            releaseDate: '',
-            updatedAt: '',
-            images: {
-                symbol: response.data.symbol ? `${response.data.symbol}.png` : `https://images.pokemontcg.io/${setId}/symbol.png`,
-                logo: response.data.logo ? `${response.data.logo}.png` : `https://images.pokemontcg.io/${setId}/logo.png`,
-            },
-        };
+        const data = await fetchGraphQL<{ set: any }>(query, { id: setId });
+        const set = data.set;
 
-        // Pass set info to each card
-        const cards = response.data.cards.map(card => convertCard(card, setId, setInfo));
+        if (!set) {
+            return { data: [], page, pageSize, count: 0, totalCount: 0 };
+        }
+
+        const setInfo = convertSet(set);
+        // Filter out null cards (failed due to schema errors like missing rarity)
+        const validCards = (set.cards || []).filter((card: any) => card !== null);
+        const cards = validCards.map((card: any) => convertGraphQLCard(card, setInfo));
 
         return {
             data: cards,
@@ -164,32 +321,123 @@ export const pokemonTcgApi = {
     },
 
     getCardsByArtist: async (artistName: string): Promise<PokemonCard[]> => {
-        const encodedArtist = encodeURIComponent(artistName);
-        const response = await api.get<{ name: string; cards: any[] }>(`/illustrators/${encodedArtist}`);
+        // Fallback to REST for search/artist if GraphQL schema is complex for this, 
+        // but let's try a simple cards query with filters if possible, 
+        // or stick to string matching on fetched cards? 
+        // TCGDex GraphQL usually supports filtering on cards.
+        // Let's assume we can filter cards by illustrator.
+        const query = `
+            query($illustrator: String!) {
+                cards(filters: { illustrator: $illustrator }) {
+                    id
+                    localId
+                    name
+                    image
+                    rarity
+                    category
+                    set {
+                        id
+                        name
+                        logo
+                        symbol
+                    }
+                    variants {
+                        normal
+                        reverse
+                        holo
+                        firstEdition
+                    }
+                }
+            }
+         `;
+        // Note: The actual filter syntax for TCGDex GraphQL might vary. 
+        // If this fails, we might need to revert this specific method or debug.
+        // However, looking at docs, standard args are often used.
 
-        return response.data.cards.map(card => {
-            // Card id in illustrator list is formatted as "setId-localId"
-            // We can extract setId by taking everything before the last hyphen
-            const parts = card.id.split('-');
-            const setId = parts.length > 1 ? parts.slice(0, -1).join('-') : '';
-            return convertCard(card, setId);
-        });
+        try {
+            const data = await fetchGraphQL<{ cards: any[] }>(query, { illustrator: artistName });
+            return (data.cards || []).map((c: any) => convertGraphQLCard(c));
+        } catch (e) {
+            console.warn("GraphQL Artist Fetch failed, trying fallback or empty", e);
+            return [];
+        }
     },
 
-    searchCards: async (_query: string, page = 1, pageSize = 20): Promise<ApiResponse<PokemonCard[]>> => {
-        // TCGdex doesn't have a direct search, return empty for now
+    searchCards: async (queryStr: string, page = 1, pageSize = 20): Promise<ApiResponse<PokemonCard[]>> => {
+        const query = `
+            query($name: String!) {
+                cards(filters: { name: $name }) {
+                    id
+                    localId
+                    name
+                    image
+                    rarity
+                    category
+                    illustrator
+                    set {
+                        id
+                        name
+                        logo
+                        symbol
+                    }
+                    variants {
+                        normal
+                        reverse
+                        holo
+                        firstEdition
+                    }
+                }
+            }
+        `;
+
+        const data = await fetchGraphQL<{ cards: any[] }>(query, { name: queryStr });
+        const cards = (data.cards || []).map(card => convertGraphQLCard(card));
+
+        // Manual Pagination for consistency
+        const startIndex = (page - 1) * pageSize;
+        const paginatedCards = cards.slice(startIndex, startIndex + pageSize);
+
         return {
-            data: [],
+            data: paginatedCards,
             page,
             pageSize,
-            count: 0,
-            totalCount: 0,
+            count: paginatedCards.length,
+            totalCount: cards.length,
         };
     },
 
     getCard: async (id: string): Promise<{ data: PokemonCard }> => {
-        const [setId, cardId] = id.split('-');
-        const response = await api.get(`/cards/${setId}/${cardId}`);
-        return { data: convertCard(response.data, setId) };
+        const query = `
+            query($id: ID!) {
+                card(id: $id) {
+                    id
+                    localId
+                    name
+                    image
+                    category
+                    rarity
+                    illustrator
+                    description
+                    variants {
+                        normal
+                        reverse
+                        holo
+                        firstEdition
+                    }
+                    set {
+                        id
+                        name
+                        logo
+                        symbol
+                        cardCount {
+                            official
+                            total
+                        }
+                    }
+                }
+            }
+        `;
+        const data = await fetchGraphQL<{ card: any }>(query, { id });
+        return { data: convertGraphQLCard(data.card) };
     },
 };

@@ -6,6 +6,8 @@ import CustomDropdown from './CustomDropdown';
 import { generatePDF, PaperSize, Orientation } from '../services/pdfService';
 import unoReverseSvg from '../assets/uno-reversesvg.svg';
 import pokemonCardBack from '../assets/pokemon-card-back.png';
+import pokeballSvg from '../assets/Pokeball.svg';
+import masterballSvg from '../assets/Masterball.svg';
 
 interface PrintViewProps {
     cards: PokemonCard[];
@@ -18,26 +20,62 @@ interface PrintSettings {
     opacity: number;
     showTopText: boolean;
     showMiddleText: boolean;
-    showBottomText: boolean;
+    showRarity: boolean;
+    showSet: boolean;
     showCutLines: boolean;
     cutLineOpacity: number;
 }
 
+const PRINT_SETTINGS_KEY = 'tcg_print_settings';
+const PRINT_CONFIG_KEY = 'tcg_print_config';
+
+const DEFAULT_SETTINGS: PrintSettings = {
+    watermarkType: 'placeholder',
+    isGrayscale: false,
+    opacity: 12,
+    showTopText: true,
+    showMiddleText: true,
+    showRarity: true,
+    showSet: true,
+    showCutLines: true,
+    cutLineOpacity: 100,
+};
+
 const PrintView: React.FC<PrintViewProps> = ({ cards, onClose }) => {
-    const [pageSize, setPageSize] = useState<PaperSize>('a4');
-    const [orientation, setOrientation] = useState<Orientation>('portrait');
+    // Load initial config from local storage
+    const initialConfig = useMemo(() => {
+        try {
+            const stored = localStorage.getItem(PRINT_CONFIG_KEY);
+            return stored ? JSON.parse(stored) : { pageSize: 'a4', orientation: 'portrait' };
+        } catch {
+            return { pageSize: 'a4', orientation: 'portrait' };
+        }
+    }, []);
+
+    const [pageSize, setPageSize] = useState<PaperSize>(initialConfig.pageSize);
+    const [orientation, setOrientation] = useState<Orientation>(initialConfig.orientation);
     const [showSettings, setShowSettings] = useState(false);
-    const [settings, setSettings] = useState<PrintSettings>({
-        watermarkType: 'placeholder',
-        isGrayscale: false,
-        opacity: 12,
-        showTopText: true,
-        showMiddleText: true,
-        showBottomText: true,
-        showCutLines: true,
-        cutLineOpacity: 100,
+
+    // Load initial settings from local storage
+    const [settings, setSettings] = useState<PrintSettings>(() => {
+        try {
+            const stored = localStorage.getItem(PRINT_SETTINGS_KEY);
+            return stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS;
+        } catch {
+            return DEFAULT_SETTINGS;
+        }
     });
     const [generating, setGenerating] = useState(false);
+
+    // Persist settings whenever they change
+    React.useEffect(() => {
+        localStorage.setItem(PRINT_SETTINGS_KEY, JSON.stringify(settings));
+    }, [settings]);
+
+    // Persist config whenever it changes
+    React.useEffect(() => {
+        localStorage.setItem(PRINT_CONFIG_KEY, JSON.stringify({ pageSize, orientation }));
+    }, [pageSize, orientation]);
 
     const paperOptions = [
         { label: 'A4 (210 x 297mm)', value: 'a4' },
@@ -180,7 +218,7 @@ const PrintView: React.FC<PrintViewProps> = ({ cards, onClose }) => {
                                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                                    className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+                                    className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl"
                                 >
                                     <div className="p-6 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-pokemon-purple/10 to-transparent">
                                         <div className="flex items-center gap-3">
@@ -202,7 +240,7 @@ const PrintView: React.FC<PrintViewProps> = ({ cards, onClose }) => {
                                         <section className="space-y-4">
                                             <div className="flex items-center gap-2 text-slate-400">
                                                 <Palette className="w-4 h-4" />
-                                                <span className="text-xs font-bold uppercase tracking-widest">Watermark Appearance</span>
+                                                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Watermark Appearance</span>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-3">
@@ -225,41 +263,35 @@ const PrintView: React.FC<PrintViewProps> = ({ cards, onClose }) => {
                                                 ))}
                                             </div>
 
-                                            {/* Grayscale Toggle */}
-                                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                                                <div className="flex items-center gap-3">
-                                                    {settings.isGrayscale ? <Moon className="w-5 h-5 text-slate-400" /> : <Sun className="w-5 h-5 text-amber-400" />}
-                                                    <div>
-                                                        <p className="font-bold text-white leading-none">
-                                                            {settings.isGrayscale ? 'Grayscale Mode' : 'Color Mode'}
-                                                        </p>
-                                                        <p className="text-xs text-slate-500 mt-1">
-                                                            {settings.isGrayscale ? 'Saves color ink' : 'Uses official colors'}
-                                                        </p>
+                                            {/* Combined Color/Opacity Box */}
+                                            <div className="p-5 bg-white/5 rounded-2xl border border-white/5 space-y-6">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        {settings.isGrayscale ? <Moon className="w-5 h-5 text-slate-400" /> : <Sun className="w-5 h-5 text-amber-400" />}
+                                                        <p className="font-bold text-white leading-none">Color Mode</p>
                                                     </div>
+                                                    <button
+                                                        onClick={() => setSettings((prev: PrintSettings) => ({ ...prev, isGrayscale: !prev.isGrayscale }))}
+                                                        className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 ${!settings.isGrayscale ? 'bg-pokemon-purple' : 'bg-slate-700'}`}
+                                                    >
+                                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${!settings.isGrayscale ? 'left-6' : 'left-1'}`} />
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    onClick={() => setSettings((prev: PrintSettings) => ({ ...prev, isGrayscale: !prev.isGrayscale }))}
-                                                    className={`w-12 h-6 rounded-full transition-colors relative ${settings.isGrayscale ? 'bg-pokemon-purple' : 'bg-slate-700'}`}
-                                                >
-                                                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.isGrayscale ? 'left-7' : 'left-1'}`} />
-                                                </button>
-                                            </div>
 
-                                            {/* Opacity Slider */}
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-sm font-bold text-slate-300 uppercase tracking-wide">Opacity</span>
-                                                    <span className="text-pokemon-purple font-mono font-bold">{settings.opacity}%</span>
+                                                <div className="space-y-3">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Watermark Opacity</span>
+                                                        <span className="text-pokemon-purple font-mono font-bold">{settings.opacity}%</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="50"
+                                                        value={settings.opacity}
+                                                        onChange={(e) => setSettings((prev: PrintSettings) => ({ ...prev, opacity: parseInt(e.target.value) }))}
+                                                        className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-pokemon-purple"
+                                                    />
                                                 </div>
-                                                <input
-                                                    type="range"
-                                                    min="0"
-                                                    max="50"
-                                                    value={settings.opacity}
-                                                    onChange={(e) => setSettings((prev: PrintSettings) => ({ ...prev, opacity: parseInt(e.target.value) }))}
-                                                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-pokemon-purple"
-                                                />
                                             </div>
                                         </section>
 
@@ -267,29 +299,30 @@ const PrintView: React.FC<PrintViewProps> = ({ cards, onClose }) => {
                                         <section className="space-y-4">
                                             <div className="flex items-center gap-2 text-slate-400">
                                                 <Type className="w-4 h-4" />
-                                                <span className="text-xs font-bold uppercase tracking-widest">Text Visibility</span>
+                                                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Text Visibility</span>
                                             </div>
 
-                                            <div className="grid gap-3">
+                                            <div className="grid grid-cols-2 gap-3">
                                                 {[
-                                                    { id: 'showTopText', label: 'Top "Placeholder" Label' },
-                                                    { id: 'showMiddleText', label: 'Middle Card Info (Name/No.)' },
-                                                    { id: 'showBottomText', label: 'Bottom Details (Rarity/Set)' }
+                                                    { id: 'showTopText', label: 'Top Label' },
+                                                    { id: 'showMiddleText', label: 'Card Name/No.' },
+                                                    { id: 'showRarity', label: 'Rarity Badge' },
+                                                    { id: 'showSet', label: 'Set Information' }
                                                 ].map((item) => (
                                                     <button
                                                         key={item.id}
                                                         onClick={() => setSettings((prev: PrintSettings) => ({ ...prev, [item.id]: !prev[item.id as keyof PrintSettings] }))}
-                                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${settings[item.id as keyof PrintSettings]
-                                                            ? 'bg-pokemon-blue/10 border-pokemon-blue/30 text-white'
+                                                        className={`flex items-center justify-between px-4 py-3 rounded-2xl border transition-all ${settings[item.id as keyof PrintSettings]
+                                                            ? 'bg-pokemon-blue/10 border-pokemon-blue/30 text-white shadow-inner'
                                                             : 'bg-white/5 border-white/5 text-slate-500'
                                                             }`}
                                                     >
-                                                        <span className="font-bold">{item.label}</span>
-                                                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors ${settings[item.id as keyof PrintSettings]
-                                                            ? 'bg-pokemon-blue border-pokemon-blue'
+                                                        <span className="font-bold text-sm tracking-tight">{item.label}</span>
+                                                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${settings[item.id as keyof PrintSettings]
+                                                            ? 'bg-pokemon-blue border-pokemon-blue scale-110'
                                                             : 'border-white/20'
                                                             }`}>
-                                                            {settings[item.id as keyof PrintSettings] && <Check className="w-4 h-4 text-white" />}
+                                                            {settings[item.id as keyof PrintSettings] && <Check className="w-3.5 h-3.5 text-white" />}
                                                         </div>
                                                     </button>
                                                 ))}
@@ -300,45 +333,42 @@ const PrintView: React.FC<PrintViewProps> = ({ cards, onClose }) => {
                                         <section className="space-y-4">
                                             <div className="flex items-center gap-2 text-slate-400">
                                                 <Scissors className="w-4 h-4" />
-                                                <span className="text-xs font-bold uppercase tracking-widest">Cut Lines</span>
+                                                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Cut Guides</span>
                                             </div>
 
-                                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-6 h-6 border-2 border-dashed border-slate-400 rounded" />
-                                                    <div>
-                                                        <p className="font-bold text-white leading-none">
-                                                            {settings.showCutLines ? 'Cut Lines Visible' : 'Cut Lines Hidden'}
-                                                        </p>
-                                                        <p className="text-xs text-slate-500 mt-1">Dashed border guides</p>
+                                            <div className="p-5 bg-white/5 rounded-2xl border border-white/5 space-y-6">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-5 h-5 border border-dashed border-slate-500 rounded" />
+                                                        <p className="font-bold text-white leading-none">Visible</p>
                                                     </div>
+                                                    <button
+                                                        onClick={() => setSettings((prev: PrintSettings) => ({ ...prev, showCutLines: !prev.showCutLines }))}
+                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ${settings.showCutLines ? 'bg-pokemon-purple' : 'bg-slate-700'
+                                                            }`}
+                                                    >
+                                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showCutLines ? 'translate-x-6' : 'translate-x-1'
+                                                            }`} />
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    onClick={() => setSettings((prev: PrintSettings) => ({ ...prev, showCutLines: !prev.showCutLines }))}
-                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${settings.showCutLines ? 'bg-pokemon-purple' : 'bg-white/10'
-                                                        }`}
-                                                >
-                                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showCutLines ? 'translate-x-6' : 'translate-x-1'
-                                                        }`} />
-                                                </button>
-                                            </div>
 
-                                            {settings.showCutLines && (
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Line Opacity</span>
-                                                        <span className="text-sm font-bold text-pokemon-purple">{settings.cutLineOpacity}%</span>
+                                                {settings.showCutLines && (
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Line Opacity</span>
+                                                            <span className="text-sm font-bold text-pokemon-purple font-mono">{settings.cutLineOpacity}%</span>
+                                                        </div>
+                                                        <input
+                                                            type="range"
+                                                            min="10"
+                                                            max="100"
+                                                            value={settings.cutLineOpacity}
+                                                            onChange={(e) => setSettings((prev: PrintSettings) => ({ ...prev, cutLineOpacity: parseInt(e.target.value) }))}
+                                                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-pokemon-purple"
+                                                        />
                                                     </div>
-                                                    <input
-                                                        type="range"
-                                                        min="10"
-                                                        max="100"
-                                                        value={settings.cutLineOpacity}
-                                                        onChange={(e) => setSettings((prev: PrintSettings) => ({ ...prev, cutLineOpacity: parseInt(e.target.value) }))}
-                                                        className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-pokemon-purple"
-                                                    />
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
                                         </section>
                                     </div>
 
@@ -431,12 +461,26 @@ const PrintView: React.FC<PrintViewProps> = ({ cards, onClose }) => {
                                         </div>
                                     </div>
 
-                                    {/* Reverse Holo Overlay */}
-                                    {card.variation === 'Reverse' && (
+                                    {/* Variation Overlay */}
+                                    {(card.variation === 'Reverse' || card.variation === 'Reverse Holo') && (
                                         <img
                                             src={unoReverseSvg}
                                             alt="Reverse Holo"
                                             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/2 opacity-25 pointer-events-none z-[5]"
+                                        />
+                                    )}
+                                    {card.variation === 'Poke Ball Holo' && (
+                                        <img
+                                            src={pokeballSvg}
+                                            alt="Poke Ball Holo"
+                                            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 opacity-30 pointer-events-none z-[5] ${settings.isGrayscale ? 'grayscale' : ''}`}
+                                        />
+                                    )}
+                                    {card.variation === 'Master Ball Holo' && (
+                                        <img
+                                            src={masterballSvg}
+                                            alt="Master Ball Holo"
+                                            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 opacity-30 pointer-events-none z-[5] ${settings.isGrayscale ? 'grayscale' : ''}`}
                                         />
                                     )}
 
@@ -458,14 +502,18 @@ const PrintView: React.FC<PrintViewProps> = ({ cards, onClose }) => {
                                             </div>
                                         ) : <div className="flex-1" />}
 
-                                        {settings.showBottomText ? (
+                                        {(settings.showRarity || settings.showSet) ? (
                                             <div className="flex flex-col gap-1.5 pb-2">
-                                                <p className="text-[10px] font-bold text-pokemon-blue uppercase tracking-tight">
-                                                    {card.variation === 'Reverse' ? 'Reverse Holo' : card.rarity}
-                                                </p>
-                                                <p className="text-[9px] text-slate-400 font-medium">
-                                                    {card.set.name}
-                                                </p>
+                                                {settings.showRarity && (
+                                                    <p className="text-[10px] font-bold text-pokemon-blue uppercase tracking-tight">
+                                                        {card.variation && card.variation !== 'Normal' ? card.variation : card.rarity}
+                                                    </p>
+                                                )}
+                                                {settings.showSet && (
+                                                    <p className="text-[9px] text-slate-400 font-medium">
+                                                        {card.set.name}
+                                                    </p>
+                                                )}
                                             </div>
                                         ) : <div />}
                                     </div>

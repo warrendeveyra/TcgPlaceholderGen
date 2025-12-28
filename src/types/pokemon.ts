@@ -38,6 +38,12 @@ export interface TcgdexCard {
     types?: string[];
     evolveFrom?: string;
     description?: string;
+    variants?: {
+        normal?: boolean;
+        reverse?: boolean;
+        holo?: boolean;
+        firstEdition?: boolean;
+    };
     set: {
         id: string;
         name: string;
@@ -88,6 +94,7 @@ export interface PokemonCard {
         series: string;
         printedTotal: number;
         total: number;
+        releaseDate: string;
         images: {
             symbol: string;
             logo: string;
@@ -102,7 +109,13 @@ export interface PokemonCard {
         small: string;
         large: string;
     };
-    variation?: 'Reverse' | 'Normal';
+    variation?: string; // 'Normal', 'Reverse', 'Poke Ball Holo', 'Master Ball Holo', etc.
+    variants?: {
+        normal?: boolean;
+        reverse?: boolean;
+        holo?: boolean;
+        firstEdition?: boolean;
+    };
 }
 
 export interface ApiResponse<T> {
