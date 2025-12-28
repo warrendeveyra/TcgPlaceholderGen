@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PokemonCard, PokemonSet } from '../types/pokemon';
 import { pokemonTcgApi } from '../services/pokemonTcgApi';
 import { getCustomCardsBySet, deleteCustomCard, deleteCustomCards, deleteCustomSet, createCustomSet, addCustomCard } from '../services/customSets';
-import { ArrowLeft, Loader2, Printer, Plus, Trash2, Eye, AlertTriangle, Edit2, Info, Copy, CheckSquare, Square, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Printer, Plus, Trash2, Eye, AlertTriangle, Edit2, Info, Copy, CheckSquare, Square, X, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PrintView from './PrintView';
 import BinderCalculator from './BinderCalculator';
@@ -10,6 +10,8 @@ import AddCardModal from './AddCardModal';
 import CardPreviewModal from './CardPreviewModal';
 import EditCustomSetModal from './EditCustomSetModal';
 import SuccessModal from './SuccessModal';
+import ShareSetModal from './ShareSetModal';
+import { shareCustomSet } from '../services/shareService';
 import { useSetContext } from '../context/SetContext';
 import { hasSpecialVariants, getSpecialVariantInfo } from '../utils/variantOverrides';
 
@@ -37,6 +39,11 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
     const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+    // Share state
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [shareUrl, setShareUrl] = useState('');
+    const [isSharing, setIsSharing] = useState(false);
 
     const { refreshCustomSets } = useSetContext();
 
@@ -148,6 +155,19 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
         }
     };
 
+    const handleShareSet = async () => {
+        setIsSharing(true);
+        const result = await shareCustomSet(currentSet, cards);
+        setIsSharing(false);
+
+        if (result.success && result.shareUrl) {
+            setShareUrl(result.shareUrl);
+            setShowShareModal(true);
+        } else {
+            alert(result.error || 'Failed to share set');
+        }
+    };
+
     const getFilteredCards = () => {
         let baseCards = cards;
 
@@ -216,7 +236,10 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
             <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                 <div className="flex items-center gap-4">
                     <button
-                        onClick={onBack}
+                        onClick={() => {
+                            refreshCustomSets();
+                            onBack();
+                        }}
                         className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
                     >
                         <ArrowLeft className="w-6 h-6" />
@@ -297,6 +320,18 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                                     Select
                                 </button>
                             )}
+                            <button
+                                onClick={handleShareSet}
+                                disabled={isSharing || displayCards.length === 0}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-pokemon-blue/20 hover:bg-pokemon-blue/30 border border-pokemon-blue/50 transition-all text-sm font-medium text-pokemon-blue disabled:opacity-50"
+                            >
+                                {isSharing ? (
+                                    <span className="w-4 h-4 border-2 border-pokemon-blue/30 border-t-pokemon-blue rounded-full animate-spin" />
+                                ) : (
+                                    <Share2 className="w-4 h-4" />
+                                )}
+                                Share
+                            </button>
                             <button
                                 onClick={() => setShowDeleteSetConfirm(true)}
                                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 transition-all text-sm font-semibold text-red-400 hover:text-red-300"
@@ -551,8 +586,8 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                         onClick={() => setShowBulkDeleteConfirm(true)}
                         disabled={selectedCardIds.size === 0}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${selectedCardIds.size > 0
-                                ? 'bg-red-500 hover:bg-red-600 text-white'
-                                : 'bg-red-500/30 text-red-400/50 cursor-not-allowed'
+                            ? 'bg-red-500 hover:bg-red-600 text-white'
+                            : 'bg-red-500/30 text-red-400/50 cursor-not-allowed'
                             }`}
                     >
                         <Trash2 className="w-4 h-4" />
@@ -856,6 +891,14 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                         setCreatedCustomSet(null);
                     },
                 }}
+            />
+
+            {/* Share Set Modal */}
+            <ShareSetModal
+                isOpen={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                shareUrl={shareUrl}
+                setName={currentSet.name}
             />
         </div>
     );

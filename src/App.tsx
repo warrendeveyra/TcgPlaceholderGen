@@ -4,7 +4,10 @@ import SetGrid from './components/SetGrid';
 import SetDetail from './components/SetDetail';
 import CreateCustomSetModal from './components/CreateCustomSetModal';
 import SplashScreen from './components/SplashScreen';
-import { deleteCustomSet, CustomSet } from './services/customSets';
+import ImportSetModal from './components/ImportSetModal';
+import SuccessModal from './components/SuccessModal';
+import { deleteCustomSet, CustomSet, createCustomSet, getCustomCards, saveCustomCards, updateSetCardCounts } from './services/customSets';
+import { getShareCodeFromUrl, getSharedSet, clearShareCodeFromUrl, SharedSetData } from './services/shareService';
 import { Search, Sparkles, Settings, FolderPlus, Trash2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -17,6 +20,12 @@ function MainContent() {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [showInstallPrompt, setShowInstallPrompt] = useState(false);
     const [showSplash, setShowSplash] = useState(true);
+
+    // Import shared set state
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [sharedSetData, setSharedSetData] = useState<SharedSetData | null>(null);
+    const [isImporting, setIsImporting] = useState(false);
+    const [shareError, setShareError] = useState<string | null>(null);
 
     // Listen for PWA install prompt
     useEffect(() => {
@@ -42,6 +51,65 @@ function MainContent() {
     const saveApiKey = () => {
         localStorage.setItem('GEMINI_API_KEY', apiKey);
         setShowSettings(false);
+    };
+
+    // Check URL for share code on mount
+    useEffect(() => {
+        const checkShareCode = async () => {
+            const shareCode = getShareCodeFromUrl();
+            if (shareCode) {
+                const result = await getSharedSet(shareCode);
+                if (result.success && result.data) {
+                    setSharedSetData(result.data);
+                    setShowImportModal(true);
+                } else if (result.error) {
+                    // Show styled error modal for expired/invalid links
+                    setShareError(result.error);
+                    clearShareCodeFromUrl();
+                }
+            }
+        };
+        checkShareCode();
+    }, []);
+
+    // Handle importing a shared set
+    const handleImportSet = async () => {
+        if (!sharedSetData) return;
+
+        setIsImporting(true);
+        try {
+            // Create the custom set
+            const newSet = createCustomSet(sharedSetData.set_name, sharedSetData.set_series || 'Imported');
+
+            // Add all cards from the shared set directly to localStorage
+            const existingCards = getCustomCards();
+
+            const importedCards = sharedSetData.cards.map((card: any, index: number) => ({
+                ...card,
+                id: `imported-${newSet.id}-${index}-${Date.now()}`,
+                customSetId: newSet.id,
+                isCustom: true,
+            }));
+
+            saveCustomCards([...existingCards, ...importedCards]);
+
+            // Update the card count for the new set
+            updateSetCardCounts(newSet.id);
+
+            // Clean up
+            clearShareCodeFromUrl();
+            setShowImportModal(false);
+            setSharedSetData(null);
+            refreshCustomSets();
+
+            // Navigate to the new set
+            setSelectedSet({ ...newSet, isCustom: true } as any);
+        } catch (err) {
+            console.error('Error importing set:', err);
+            alert('Failed to import set. Please try again.');
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     return (
@@ -397,6 +465,32 @@ function MainContent() {
                         </motion.div>
                     </div>
                 )}
+
+                {/* Import Shared Set Modal */}
+                <ImportSetModal
+                    isOpen={showImportModal}
+                    onClose={() => {
+                        setShowImportModal(false);
+                        setSharedSetData(null);
+                        clearShareCodeFromUrl();
+                    }}
+                    onImport={handleImportSet}
+                    sharedSet={sharedSetData}
+                    isImporting={isImporting}
+                />
+
+                {/* Share Error Modal */}
+                <SuccessModal
+                    isOpen={!!shareError}
+                    onClose={() => setShareError(null)}
+                    title="Link Unavailable"
+                    description={shareError || ''}
+                    accentColor="red"
+                    primaryAction={{
+                        label: 'OK',
+                        onClick: () => setShareError(null),
+                    }}
+                />
             </div>
         </>
     );

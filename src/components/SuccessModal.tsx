@@ -15,7 +15,7 @@ interface SuccessModalProps {
         label: string;
         onClick: () => void;
     };
-    accentColor?: 'green' | 'purple' | 'blue' | 'yellow';
+    accentColor?: 'green' | 'purple' | 'blue' | 'yellow' | 'red';
 }
 
 const colorMap = {
@@ -46,6 +46,13 @@ const colorMap = {
         border: 'border-pokemon-yellow/30',
         button: 'bg-pokemon-yellow hover:bg-pokemon-yellow/80',
         particle: '#eab308',
+    },
+    red: {
+        bg: 'bg-red-500/20',
+        text: 'text-red-400',
+        border: 'border-red-500/30',
+        button: 'bg-red-500 hover:bg-red-600',
+        particle: '#ef4444',
     },
 };
 
@@ -91,6 +98,18 @@ const AnimatedCheck: React.FC<{ color: string }> = ({ color }) => (
             }}
         />
     </motion.svg>
+);
+
+// Animated sad face emoji for error states
+const AnimatedSadFace: React.FC = () => (
+    <motion.span
+        className="text-4xl"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', duration: 0.5 }}
+    >
+        😢
+    </motion.span>
 );
 
 const SuccessModal: React.FC<SuccessModalProps> = ({
@@ -159,7 +178,11 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
                                     animate={{ scale: 1 }}
                                     transition={{ type: 'spring', duration: 0.5, delay: 0.1 }}
                                 >
-                                    <AnimatedCheck color={colors.particle} />
+                                    {accentColor === 'red' ? (
+                                        <AnimatedSadFace />
+                                    ) : (
+                                        <AnimatedCheck color={colors.particle} />
+                                    )}
                                 </motion.div>
                             </div>
 

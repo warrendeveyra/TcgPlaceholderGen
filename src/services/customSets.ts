@@ -210,7 +210,7 @@ export const deleteCustomCards = (ids: string[]): void => {
 };
 
 // Update card counts for a set
-const updateSetCardCounts = (setId: string): void => {
+export const updateSetCardCounts = (setId: string): void => {
     const cards = getCustomCardsBySet(setId);
     const count = cards.length;
 
