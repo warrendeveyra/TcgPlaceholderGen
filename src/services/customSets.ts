@@ -190,6 +190,25 @@ export const deleteCustomCard = (id: string): void => {
     }
 };
 
+// Delete multiple custom cards at once (more efficient than calling deleteCustomCard in a loop)
+export const deleteCustomCards = (ids: string[]): void => {
+    if (ids.length === 0) return;
+
+    const cards = getCustomCards();
+    const idsSet = new Set(ids);
+    const cardsToDelete = cards.filter(c => idsSet.has(c.id));
+
+    // Get unique set IDs that will be affected
+    const affectedSetIds = [...new Set(cardsToDelete.map(c => c.customSetId))];
+
+    // Filter out deleted cards
+    const filteredCards = cards.filter(c => !idsSet.has(c.id));
+    saveCustomCards(filteredCards);
+
+    // Update counts for all affected sets
+    affectedSetIds.forEach(setId => updateSetCardCounts(setId));
+};
+
 // Update card counts for a set
 const updateSetCardCounts = (setId: string): void => {
     const cards = getCustomCardsBySet(setId);

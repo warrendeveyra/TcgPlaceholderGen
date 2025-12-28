@@ -79,10 +79,28 @@ export function getSetVariants(
     name?: string
 ): string[] {
     // Special card types that already have a base holo pattern and no reverse holo variant
-    const noVariantSubtypes = ['GX', 'V', 'VMAX', 'VSTAR', 'EX'];
+    const noVariantSubtypes = ['GX', 'V', 'VMAX', 'VSTAR', 'V-UNION', 'EX'];
 
-    // Check subtypes
-    const hasSpecialSubtype = subtypes && subtypes.some(st => noVariantSubtypes.includes(st.toUpperCase()));
+    // Ace Spec cards - these don't have reverse holo variants
+    const ACE_SPEC_CARDS = [
+        // Black & White era
+        'Computer Search', 'Crystal Edge', 'Crystal Wall', 'Gold Potion',
+        'Dowsing MCHN', 'Scramble Switch', 'Victory Piece', 'Life Dew',
+        'Rock Guard', 'G Booster', 'G Scope', 'Master Ball', 'Scoop Up Cyclone',
+        // Scarlet & Violet era
+        'Awakening Drum', "Hero's Cape", 'Maximum Belt', 'Prime Catcher',
+        'Reboot Bot', 'Neo Upper Energy', 'Hyper Aroma', 'Secret Box',
+        'Survival Brace', 'Unfair Stamp', 'Legacy Energy', 'Dangerous Laser',
+        'Neutralization Zone', 'Poke Vital A', 'Deluxe Bomb', 'Grand Tree',
+        'Sparkling Crystal', 'Amulet of Hope', 'Brilliant Blender',
+        'Energy Search Pro', 'Megaton Blower', 'Miracle Headset',
+        'Precious Trolley', 'Enriching Energy', 'Max Rod', 'Treasure Tracker',
+    ];
+
+    // Check subtypes (case-insensitive comparison)
+    const hasSpecialSubtype = subtypes && subtypes.some(st =>
+        noVariantSubtypes.some(nv => st.toUpperCase() === nv.toUpperCase())
+    );
 
     // Check name ending (e.g., "Pikachu VMAX" or "Zekrom ex")
     const cleanName = name?.trim() || '';
@@ -91,7 +109,14 @@ export function getSetVariants(
         return regex.test(cleanName);
     });
 
-    if (hasSpecialSubtype || hasSpecialName) {
+    // Basic Energy cards don't have reverse holo variants
+    // Matches patterns like "Basic Water Energy", "Basic Fire Energy", etc.
+    const isBasicEnergy = /^Basic\s+\w+\s+Energy$/i.test(cleanName);
+
+    // Check if card is an Ace Spec by name
+    const isAceSpec = ACE_SPEC_CARDS.some(ace => cleanName.toLowerCase() === ace.toLowerCase());
+
+    if (hasSpecialSubtype || hasSpecialName || isBasicEnergy || isAceSpec) {
         return [];
     }
 

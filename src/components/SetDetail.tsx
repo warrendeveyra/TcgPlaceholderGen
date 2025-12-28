@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { PokemonCard, PokemonSet } from '../types/pokemon';
 import { pokemonTcgApi } from '../services/pokemonTcgApi';
-import { getCustomCardsBySet, deleteCustomCard, deleteCustomSet, createCustomSet, addCustomCard } from '../services/customSets';
-import { ArrowLeft, Loader2, Printer, Plus, Trash2, Eye, AlertTriangle, Edit2, Info, Copy } from 'lucide-react';
+import { getCustomCardsBySet, deleteCustomCard, deleteCustomCards, deleteCustomSet, createCustomSet, addCustomCard } from '../services/customSets';
+import { ArrowLeft, Loader2, Printer, Plus, Trash2, Eye, AlertTriangle, Edit2, Info, Copy, CheckSquare, Square, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PrintView from './PrintView';
 import BinderCalculator from './BinderCalculator';
@@ -32,6 +32,11 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
     const [currentSet, setCurrentSet] = useState(set);
     const [createdCustomSet, setCreatedCustomSet] = useState<(PokemonSet & { isCustom?: boolean }) | null>(null);
     const [showCreateConfirm, setShowCreateConfirm] = useState(false);
+
+    // Selection mode state
+    const [isSelectMode, setIsSelectMode] = useState(false);
+    const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
+    const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
     const { refreshCustomSets } = useSetContext();
 
@@ -107,7 +112,41 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
         }
     };
 
+    // Selection mode functions
+    const toggleCardSelection = (cardId: string) => {
+        setSelectedCardIds(prev => {
+            const next = new Set(prev);
+            if (next.has(cardId)) {
+                next.delete(cardId);
+            } else {
+                next.add(cardId);
+            }
+            return next;
+        });
+    };
 
+    const selectAllCards = () => {
+        const allIds = new Set(displayCards.map(c => c.id));
+        setSelectedCardIds(allIds);
+    };
+
+    const deselectAllCards = () => {
+        setSelectedCardIds(new Set());
+    };
+
+    const exitSelectMode = () => {
+        setIsSelectMode(false);
+        setSelectedCardIds(new Set());
+    };
+
+    const confirmBulkDelete = () => {
+        if (selectedCardIds.size > 0) {
+            deleteCustomCards(Array.from(selectedCardIds));
+            refreshCards();
+            exitSelectMode();
+            setShowBulkDeleteConfirm(false);
+        }
+    };
 
     const getFilteredCards = () => {
         let baseCards = cards;
@@ -239,13 +278,33 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                     )}
 
                     {isCustomSet && (
-                        <button
-                            onClick={() => setShowDeleteSetConfirm(true)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 transition-all text-sm font-semibold text-red-400 hover:text-red-300"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            Delete Set
-                        </button>
+                        <>
+                            {isSelectMode ? (
+                                <button
+                                    onClick={exitSelectMode}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 transition-all text-sm font-medium text-white"
+                                >
+                                    <X className="w-4 h-4" />
+                                    Cancel
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setIsSelectMode(true)}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-pokemon-purple/20 hover:bg-pokemon-purple/30 border border-pokemon-purple/50 transition-all text-sm font-medium text-pokemon-purple"
+                                    disabled={displayCards.length === 0}
+                                >
+                                    <CheckSquare className="w-4 h-4" />
+                                    Select
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setShowDeleteSetConfirm(true)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 transition-all text-sm font-semibold text-red-400 hover:text-red-300"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Delete Set
+                            </button>
+                        </>
                     )}
 
                     <button
@@ -322,112 +381,232 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                     )}
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-                        {displayCards.map((card, index) => (
-                            <motion.div
-                                key={`${currentSet.id}-${card.id}-${index}-${card.variation || 'default'}`}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: Math.min(index * 0.01, 0.5) }}
-                                className="relative aspect-[2.5/3.5] group cursor-pointer"
-                                onClick={() => setPreviewCard(card)}
-                            >
-                                <div className={`absolute inset-0 rounded-lg border overflow-hidden transition-all duration-300 ${card.variation === 'Reverse'
-                                    ? 'bg-gradient-to-br from-pokemon-blue/20 to-pokemon-red/20 border-pokemon-blue/30 shadow-[0_0_15px_-5px_rgba(59,76,202,0.5)]'
-                                    : 'bg-white/5 border-white/10 group-hover:border-pokemon-yellow/50'
-                                    }`}>
-                                    {card.images.small ? (
-                                        <img
-                                            src={card.images.small}
-                                            alt={card.name}
-                                            className={`w-full h-full object-contain p-2 transition-transform duration-500 group-hover:scale-105 ${card.variation === 'Reverse' ? 'filter saturate-[1.2] brightness-[1.1]' : ''
-                                                }`}
-                                            loading="lazy"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center p-3">
-                                            <div className="text-center">
-                                                <div className="text-2xl mb-1">🃏</div>
-                                                <div className="text-xs font-bold text-white truncate">{card.name}</div>
-                                                <div className="text-[10px] text-slate-400">#{card.number}</div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* View button - appears on hover */}
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
+                        {displayCards.map((card, index) => {
+                            const isSelected = selectedCardIds.has(card.id);
+                            return (
+                                <motion.div
+                                    key={`${currentSet.id}-${card.id}-${index}-${card.variation || 'default'}`}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: Math.min(index * 0.01, 0.5) }}
+                                    className={`relative aspect-[2.5/3.5] group cursor-pointer ${isSelectMode && isSelected ? 'ring-2 ring-pokemon-purple ring-offset-2 ring-offset-slate-900 rounded-lg' : ''}`}
+                                    onClick={() => {
+                                        if (isSelectMode) {
+                                            toggleCardSelection(card.id);
+                                        } else {
                                             setPreviewCard(card);
-                                        }}
-                                        className="absolute top-1 left-1 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="View card"
-                                    >
-                                        <Eye className="w-3 h-3" />
-                                    </button>
+                                        }
+                                    }}
+                                >
+                                    <div className={`absolute inset-0 rounded-lg border overflow-hidden transition-all duration-300 ${card.variation === 'Reverse'
+                                        ? 'bg-gradient-to-br from-pokemon-blue/20 to-pokemon-red/20 border-pokemon-blue/30 shadow-[0_0_15px_-5px_rgba(59,76,202,0.5)]'
+                                        : 'bg-white/5 border-white/10 group-hover:border-pokemon-yellow/50'
+                                        }`}>
+                                        {card.images.small ? (
+                                            <img
+                                                src={card.images.small}
+                                                alt={card.name}
+                                                className={`w-full h-full object-contain p-2 transition-transform duration-500 group-hover:scale-105 ${card.variation === 'Reverse' ? 'filter saturate-[1.2] brightness-[1.1]' : ''
+                                                    }`}
+                                                loading="lazy"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center p-3">
+                                                <div className="text-center">
+                                                    <div className="text-2xl mb-1">🃏</div>
+                                                    <div className="text-xs font-bold text-white truncate">{card.name}</div>
+                                                    <div className="text-[10px] text-slate-400">#{card.number}</div>
+                                                </div>
+                                            </div>
+                                        )}
 
-                                    {/* Variation Badge */}
-                                    {card.variation && card.variation !== 'Normal' && (
-                                        <div className="absolute top-1 right-1">
-                                            {card.variation === 'Reverse' || card.variation === 'Reverse Holo' ? (
-                                                <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-gradient-to-r from-pokemon-blue to-pokemon-red text-white shadow-lg">
-                                                    Reverse
-                                                </div>
-                                            ) : card.variation === 'Poke Ball Holo' ? (
-                                                <svg className="w-5 h-5 drop-shadow-lg" viewBox="0 0 24 24">
-                                                    <path d="M12 12 L12 22 A10 10 0 0 1 2 12 Z" fill="white" />
-                                                    <path d="M12 12 L22 12 A10 10 0 0 1 12 22 Z" fill="white" />
-                                                    <path d="M12 12 L12 2 A10 10 0 0 1 22 12 Z" fill="#EF4444" />
-                                                    <path d="M12 12 L2 12 A10 10 0 0 1 12 2 Z" fill="#EF4444" />
-                                                    <rect x="2" y="10.5" width="20" height="3" fill="#1F2937" />
-                                                    <circle cx="12" cy="12" r="4" fill="white" stroke="#1F2937" strokeWidth="2" />
-                                                    <circle cx="12" cy="12" r="2" fill="#E5E7EB" />
-                                                    <circle cx="12" cy="12" r="10" fill="none" stroke="#1F2937" strokeWidth="1.5" />
-                                                </svg>
-                                            ) : card.variation === 'Master Ball Holo' ? (
-                                                <svg className="w-5 h-5 drop-shadow-lg" viewBox="0 0 24 24">
-                                                    <path d="M12 12 L12 22 A10 10 0 0 1 2 12 Z" fill="white" />
-                                                    <path d="M12 12 L22 12 A10 10 0 0 1 12 22 Z" fill="white" />
-                                                    <path d="M12 12 L12 2 A10 10 0 0 1 22 12 Z" fill="#8B5CF6" />
-                                                    <path d="M12 12 L2 12 A10 10 0 0 1 12 2 Z" fill="#8B5CF6" />
-                                                    <circle cx="12" cy="6" r="2.5" fill="#EC4899" />
-                                                    <path d="M6 4 L8 8" stroke="#EC4899" strokeWidth="2" strokeLinecap="round" />
-                                                    <path d="M18 4 L16 8" stroke="#EC4899" strokeWidth="2" strokeLinecap="round" />
-                                                    <rect x="2" y="10.5" width="20" height="3" fill="#1F2937" />
-                                                    <circle cx="12" cy="12" r="4" fill="white" stroke="#1F2937" strokeWidth="2" />
-                                                    <circle cx="12" cy="12" r="2" fill="#E5E7EB" />
-                                                    <circle cx="12" cy="12" r="10" fill="none" stroke="#1F2937" strokeWidth="1.5" />
-                                                </svg>
-                                            ) : (
-                                                <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-slate-600 text-white shadow-lg">
-                                                    {card.variation.slice(0, 3)}
-                                                </div>
-                                            )}
+                                        {/* Selection checkbox - visible in select mode */}
+                                        {isSelectMode && (
+                                            <div className="absolute top-1 left-1 z-10">
+                                                {isSelected ? (
+                                                    <div className="w-6 h-6 rounded bg-pokemon-purple flex items-center justify-center shadow-lg">
+                                                        <CheckSquare className="w-4 h-4 text-white" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-6 h-6 rounded bg-black/60 border border-white/30 flex items-center justify-center">
+                                                        <Square className="w-4 h-4 text-white/60" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* View button - only appears on hover when NOT in select mode */}
+                                        {!isSelectMode && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPreviewCard(card);
+                                                }}
+                                                className="absolute top-1 left-1 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                title="View card"
+                                            >
+                                                <Eye className="w-3 h-3" />
+                                            </button>
+                                        )}
+
+                                        {/* Variation Badge */}
+                                        {card.variation && card.variation !== 'Normal' && (
+                                            <div className={`absolute top-1 right-1 ${isSelectMode ? 'top-8' : ''}`}>
+                                                {card.variation === 'Reverse' || card.variation === 'Reverse Holo' ? (
+                                                    <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-gradient-to-r from-pokemon-blue to-pokemon-red text-white shadow-lg">
+                                                        Reverse
+                                                    </div>
+                                                ) : card.variation === 'Poke Ball Holo' ? (
+                                                    <svg className="w-5 h-5 drop-shadow-lg" viewBox="0 0 24 24">
+                                                        <path d="M12 12 L12 22 A10 10 0 0 1 2 12 Z" fill="white" />
+                                                        <path d="M12 12 L22 12 A10 10 0 0 1 12 22 Z" fill="white" />
+                                                        <path d="M12 12 L12 2 A10 10 0 0 1 22 12 Z" fill="#EF4444" />
+                                                        <path d="M12 12 L2 12 A10 10 0 0 1 12 2 Z" fill="#EF4444" />
+                                                        <rect x="2" y="10.5" width="20" height="3" fill="#1F2937" />
+                                                        <circle cx="12" cy="12" r="4" fill="white" stroke="#1F2937" strokeWidth="2" />
+                                                        <circle cx="12" cy="12" r="2" fill="#E5E7EB" />
+                                                        <circle cx="12" cy="12" r="10" fill="none" stroke="#1F2937" strokeWidth="1.5" />
+                                                    </svg>
+                                                ) : card.variation === 'Master Ball Holo' ? (
+                                                    <svg className="w-5 h-5 drop-shadow-lg" viewBox="0 0 24 24">
+                                                        <path d="M12 12 L12 22 A10 10 0 0 1 2 12 Z" fill="white" />
+                                                        <path d="M12 12 L22 12 A10 10 0 0 1 12 22 Z" fill="white" />
+                                                        <path d="M12 12 L12 2 A10 10 0 0 1 22 12 Z" fill="#8B5CF6" />
+                                                        <path d="M12 12 L2 12 A10 10 0 0 1 12 2 Z" fill="#8B5CF6" />
+                                                        <circle cx="12" cy="6" r="2.5" fill="#EC4899" />
+                                                        <path d="M6 4 L8 8" stroke="#EC4899" strokeWidth="2" strokeLinecap="round" />
+                                                        <path d="M18 4 L16 8" stroke="#EC4899" strokeWidth="2" strokeLinecap="round" />
+                                                        <rect x="2" y="10.5" width="20" height="3" fill="#1F2937" />
+                                                        <circle cx="12" cy="12" r="4" fill="white" stroke="#1F2937" strokeWidth="2" />
+                                                        <circle cx="12" cy="12" r="2" fill="#E5E7EB" />
+                                                        <circle cx="12" cy="12" r="10" fill="none" stroke="#1F2937" strokeWidth="1.5" />
+                                                    </svg>
+                                                ) : (
+                                                    <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-slate-600 text-white shadow-lg">
+                                                        {card.variation.slice(0, 3)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Delete button for custom cards - only when NOT in select mode */}
+                                        {isCustomSet && !isSelectMode && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setCardToDelete(card);
+                                                }}
+                                                className="absolute top-1 right-1 p-1 rounded bg-red-500/80 hover:bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                title="Remove card"
+                                            >
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        )}
+
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2 pointer-events-none">
+                                            <p className="text-[10px] font-bold text-white truncate">{card.name}</p>
+                                            <p className="text-[8px] text-slate-300">{card.number} / {set.printedTotal || cards.length}</p>
                                         </div>
-                                    )}
-
-                                    {/* Delete button for custom cards */}
-                                    {isCustomSet && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setCardToDelete(card);
-                                            }}
-                                            className="absolute top-1 right-1 p-1 rounded bg-red-500/80 hover:bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                            title="Remove card"
-                                        >
-                                            <Trash2 className="w-3 h-3" />
-                                        </button>
-                                    )}
-
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2 pointer-events-none">
-                                        <p className="text-[10px] font-bold text-white truncate">{card.name}</p>
-                                        <p className="text-[8px] text-slate-300">{card.number} / {set.printedTotal || cards.length}</p>
                                     </div>
-                                </div>
-                            </motion.div>
-                        ))}
+                                </motion.div>
+                            );
+                        })}
                     </div>
                 </>
+            )}
+
+            {/* Floating Action Bar for Selection Mode */}
+            {isSelectMode && (
+                <motion.div
+                    initial={{ opacity: 0, y: 100 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 100 }}
+                    className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-gradient-to-r from-slate-800 to-slate-900 border border-white/10 rounded-2xl shadow-2xl px-6 py-4 flex items-center gap-4"
+                >
+                    <div className="flex items-center gap-2 text-white">
+                        <CheckSquare className="w-5 h-5 text-pokemon-purple" />
+                        <span className="font-semibold">{selectedCardIds.size}</span>
+                        <span className="text-slate-400">selected</span>
+                    </div>
+
+                    <div className="w-px h-8 bg-white/10" />
+
+                    {selectedCardIds.size === displayCards.length ? (
+                        <button
+                            onClick={deselectAllCards}
+                            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-all"
+                        >
+                            Deselect All
+                        </button>
+                    ) : (
+                        <button
+                            onClick={selectAllCards}
+                            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-all"
+                        >
+                            Select All
+                        </button>
+                    )}
+
+                    <button
+                        onClick={() => setShowBulkDeleteConfirm(true)}
+                        disabled={selectedCardIds.size === 0}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${selectedCardIds.size > 0
+                                ? 'bg-red-500 hover:bg-red-600 text-white'
+                                : 'bg-red-500/30 text-red-400/50 cursor-not-allowed'
+                            }`}
+                    >
+                        <Trash2 className="w-4 h-4" />
+                        Delete Selected
+                    </button>
+                </motion.div>
+            )}
+
+            {/* Bulk Delete Confirmation Modal */}
+            {showBulkDeleteConfirm && (
+                <div
+                    className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                    onClick={() => setShowBulkDeleteConfirm(false)}
+                >
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-gradient-to-br from-slate-900 to-slate-950 border border-red-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="text-center">
+                            {/* Warning icon */}
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
+                                <Trash2 className="w-8 h-8 text-red-500" />
+                            </div>
+
+                            <h3 className="text-xl font-bold text-white mb-2">Delete {selectedCardIds.size} Cards?</h3>
+
+                            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6">
+                                <p className="text-red-400 text-sm font-medium mb-2">
+                                    ⚠️ This action cannot be undone
+                                </p>
+                                <p className="text-slate-400 text-sm">
+                                    The selected cards will be permanently removed from your custom set.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowBulkDeleteConfirm(false)}
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmBulkDelete}
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-all"
+                                >
+                                    Delete {selectedCardIds.size} Cards
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
             )}
 
             {/* Add Card Modal for Custom Sets */}
