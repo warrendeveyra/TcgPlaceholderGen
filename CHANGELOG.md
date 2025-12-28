@@ -56,6 +56,22 @@ All notable changes to the **TCG Placeholder Generator** project will be documen
 
 ---
 
+### 🚀 Performance
+
+- **Memory Optimization** — Reduced memory usage from ~1.3GB to ~400MB on large sets.
+- **Lazy Grid Rendering** — Card images load only when scrolling into view using `IntersectionObserver`.
+- **State Pruning** — Card objects stored in memory no longer include redundant `set` data.
+- **PDF Generation Optimizations** — Explicit canvas disposal, direct canvas passing to jsPDF, and async yields.
+- **Memory-Efficient Grid** — New `GridCard` component handles visibility detection and conditional rendering.
+
+---
+
+### 🔧 Developer Experience
+
+- **HMR Fix** — Fixed WebSocket connection failures in dev mode when using the `/TcgPlaceholderGen/` base path.
+
+---
+
 ### ⚠️ Known Issues
 
 - **API Limitations** — Some nested queries require external merge strategy.

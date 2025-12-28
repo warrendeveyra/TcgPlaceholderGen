@@ -37,6 +37,16 @@ const applyGrayscaleToCanvas = (canvas: HTMLCanvasElement): HTMLCanvasElement =>
     return canvas;
 };
 
+// Helper to release canvas memory
+const disposeCanvas = (canvas: HTMLCanvasElement | null) => {
+    if (!canvas) return;
+    canvas.width = 0;
+    canvas.height = 0;
+};
+
+// Helper for a small delay to yield to the main thread
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const generatePDF = async (
     containerId: string,
     size: PaperSize,
@@ -59,6 +69,7 @@ export const generatePDF = async (
         orientation: orientation,
         unit: 'mm',
         format: size === 'letter' ? 'letter' : size === 'legal' ? 'legal' : 'a4',
+        compress: true // Enable internal compression
     });
 
     for (let i = 0; i < pages.length; i++) {
@@ -68,9 +79,9 @@ export const generatePDF = async (
             pdf.addPage(size === 'letter' ? 'letter' : size === 'legal' ? 'legal' : 'a4', orientation);
         }
 
-        // Optimized resolution capture (1.5 scale is a good balance for print quality vs file size)
+        // Capture page element
         let canvas = await html2canvas(pageElement, {
-            scale: 1.5,
+            scale: 1.5, // 1.5 is ideal balance for quality vs memory
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
@@ -79,15 +90,12 @@ export const generatePDF = async (
             height: pageElement.scrollHeight
         });
 
-        // Apply grayscale if enabled
+        // Apply grayscale if enabled (in-place modification)
         if (options.grayscale) {
             canvas = applyGrayscaleToCanvas(canvas);
         }
 
-        // Use JPEG with 0.8 quality for significant file size reduction
-        const imgData = canvas.toDataURL('image/jpeg', 0.8);
-
-        // Use the grid element's dimensions for accurate scaling (usually 190.5mm x 266.7mm)
+        // Use the grid element's dimensions for accurate scaling
         const gridElement = pageElement.querySelector('.grid') as HTMLElement;
         const gridWidth = gridElement ? parseFloat(gridElement.style.width) : 190.5;
         const gridHeight = gridElement ? parseFloat(gridElement.style.height) : (3 * 88.9);
@@ -95,8 +103,17 @@ export const generatePDF = async (
         const xOffset = (pageWidth - gridWidth) / 2;
         const yOffset = (pageHeight - gridHeight) / 2;
 
-        // Specify 'JPEG' and 'FAST' compression for jsPDF
-        pdf.addImage(imgData, 'JPEG', xOffset, yOffset, gridWidth, gridHeight, undefined, 'FAST');
+        // Pass canvas directly to addImage (jsPDF handles the conversion)
+        // JPEG 0.8 quality and 'FAST' compression
+        pdf.addImage(canvas, 'JPEG', xOffset, yOffset, gridWidth, gridHeight, undefined, 'FAST');
+
+        // EXPLICIT DISPOSAL: Release canvas memory before next page
+        disposeCanvas(canvas);
+
+        // Yield to allow garbage collection and prevent UI lockup
+        if (pages.length > 5) {
+            await delay(50);
+        }
     }
 
     pdf.save(filename);

@@ -7,4 +7,10 @@ export default defineConfig({
     plugins: [
         react(),
     ],
+    server: {
+        hmr: {
+            // Fix WebSocket connection when using base path in dev mode
+            path: '/ws',
+        },
+    },
 })

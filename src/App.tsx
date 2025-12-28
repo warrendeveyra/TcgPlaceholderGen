@@ -8,7 +8,7 @@ import ImportSetModal from './components/ImportSetModal';
 import SuccessModal from './components/SuccessModal';
 import { deleteCustomSet, CustomSet, createCustomSet, getCustomCards, saveCustomCards, updateSetCardCounts } from './services/customSets';
 import { getShareCodeFromUrl, getSharedSet, clearShareCodeFromUrl, SharedSetData } from './services/shareService';
-import { Search, Sparkles, Settings, FolderPlus, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, Sparkles, Settings, FolderPlus, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function MainContent() {
@@ -26,6 +26,7 @@ function MainContent() {
     const [sharedSetData, setSharedSetData] = useState<SharedSetData | null>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [shareError, setShareError] = useState<string | null>(null);
+    const [showUpdateToast, setShowUpdateToast] = useState(false);
 
     // Listen for PWA install prompt
     useEffect(() => {
@@ -36,6 +37,38 @@ function MainContent() {
         };
         window.addEventListener('beforeinstallprompt', handler);
         return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    // Listen for service worker updates
+    useEffect(() => {
+        const handleSwMessage = (event: MessageEvent) => {
+            if (event.data && event.data.type === 'SW_UPDATED') {
+                console.log('New version available:', event.data.version);
+                setShowUpdateToast(true);
+            }
+        };
+
+        navigator.serviceWorker?.addEventListener('message', handleSwMessage);
+
+        // Also check for waiting service worker on load
+        navigator.serviceWorker?.ready.then(registration => {
+            if (registration.waiting) {
+                setShowUpdateToast(true);
+            }
+            // Listen for new updates
+            registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker?.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        setShowUpdateToast(true);
+                    }
+                });
+            });
+        });
+
+        return () => {
+            navigator.serviceWorker?.removeEventListener('message', handleSwMessage);
+        };
     }, []);
 
     const handleInstallClick = async () => {
@@ -491,6 +524,36 @@ function MainContent() {
                         onClick: () => setShareError(null),
                     }}
                 />
+
+                {/* Update Available Toast */}
+                <AnimatePresence>
+                    {showUpdateToast && (
+                        <motion.div
+                            initial={{ y: 100, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 100, opacity: 0 }}
+                            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] bg-gradient-to-r from-pokemon-blue to-pokemon-purple px-4 py-3 rounded-xl shadow-2xl border border-white/20 flex items-center gap-3"
+                        >
+                            <RefreshCw className="w-5 h-5 text-white animate-spin" />
+                            <span className="text-white font-medium text-sm">New version available!</span>
+                            <button
+                                onClick={() => {
+                                    setShowUpdateToast(false);
+                                    window.location.reload();
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-white text-pokemon-blue font-semibold text-sm hover:bg-white/90 transition-colors"
+                            >
+                                Refresh
+                            </button>
+                            <button
+                                onClick={() => setShowUpdateToast(false)}
+                                className="text-white/60 hover:text-white text-lg leading-none"
+                            >
+                                ×
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </>
     );
