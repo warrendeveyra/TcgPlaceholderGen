@@ -10,6 +10,7 @@ All notable changes to the **TCG Placeholder Generator** project will be documen
 - **Redesigned Advanced Settings Modal**: Improved horizontal balance with a cleaner visual grouping and refined vertical flow.
 - **Granular Text Control**: Separate toggles for **Rarity Badge** and **Set Information** on printed cards, allowing for cleaner placeholder designs.
 - **Improved Set Headers**: Sets now display their release year in the header, making it easier to distinguish between different eras of cards.
+- **Special Card Variant Logic**: Automatically skips the variant picker for **GX, V, VMAX, VSTAR, and EX** cards, as these cards are already holographic and do not have standard variants.
 - **Older Sets Support**: Users can now seamlessly add older sets and cards to their custom collections.
 - **Robust Variant Selection**: New `VariationPicker` component ensures accurate handling of all card variants (Reverse Holo, Pokeball Holo, Masterball Holo) and supports adding duplicate copies of the same variant.
 - **Set Data Merging**: Implemented a data merging strategy to preserve release dates and series information when fetching individual card details from the API.

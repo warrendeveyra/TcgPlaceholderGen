@@ -81,6 +81,32 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
         }
     };
 
+    const handleAddCard = (card: PokemonCard, variation?: string) => {
+        addCustomCard(
+            currentSet.id,
+            card.name,
+            card.number,
+            card.rarity || 'Common',
+            card.images.small,
+            card,
+            variation || card.variation || 'Normal'
+        );
+        refreshCards();
+    };
+
+    const handleRemoveCard = (card: PokemonCard) => {
+        const variation = card.variation || 'Normal';
+        const cardToRemove = [...cards].reverse().find(c =>
+            c.number === card.number &&
+            (c.variation || 'Normal') === variation
+        );
+
+        if (cardToRemove) {
+            deleteCustomCard(cardToRemove.id);
+            refreshCards();
+        }
+    };
+
 
 
     const getFilteredCards = () => {
@@ -160,7 +186,7 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                         <div className="flex items-center gap-3">
                             <h2 className="text-3xl font-bold text-white leading-tight">
                                 {currentSet.name}
-                                {currentSet.releaseDate && (
+                                {currentSet.releaseDate && !isCustomSet && (
                                     <span className="ml-3 text-lg font-medium text-slate-500">
                                         ({currentSet.releaseDate.split('-')[0]})
                                     </span>
@@ -420,6 +446,8 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                 isOpen={!!previewCard}
                 onClose={() => setPreviewCard(null)}
                 customSetId={isCustomSet ? set.id : undefined}
+                onAdd={handleAddCard}
+                onRemove={handleRemoveCard}
                 onVariantAdded={() => {
                     refreshCards();
                     // Keep modal open so user can add more variants

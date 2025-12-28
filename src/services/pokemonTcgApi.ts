@@ -85,7 +85,10 @@ const convertGraphQLCard = (card: any, setInfo?: PokemonSet): PokemonCard => {
         id: card.id,
         name: card.name,
         supertype,
-        subtypes: card.subtypes || [],
+        subtypes: Array.from(new Set([
+            ...(card.subtypes || []),
+            ...(card.stage ? [card.stage] : [])
+        ])),
         number: card.localId,
         artist: card.illustrator || '',
         rarity,
@@ -288,6 +291,7 @@ export const pokemonTcgApi = {
                         name
                         image
                         illustrator
+                        stage
                         variants {
                             normal
                             reverse
@@ -374,6 +378,7 @@ export const pokemonTcgApi = {
                     rarity
                     category
                     illustrator
+                    stage
                     set {
                         id
                         name
@@ -417,6 +422,7 @@ export const pokemonTcgApi = {
                     category
                     rarity
                     illustrator
+                    stage
                     description
                     variants {
                         normal

@@ -581,11 +581,30 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
                 card={previewCard}
                 isOpen={!!previewCard}
                 onClose={() => setPreviewCard(null)}
-                onAdd={(card) => {
-                    handleAddOne(card);
-                    setPreviewCard(null);
+                customSetId={setId}
+                onAdd={(card, variation) => {
+                    handleAddOne(card, variation || 'Normal');
                 }}
-                isAdded={previewCard ? getCardQuantity(previewCard.id) > 0 : false}
+                onRemove={(card) => {
+                    handleRemoveOne(card);
+                }}
+                onVariantAdded={() => {
+                    // Refresh quantities when variant is added
+                    const existingCards = getCustomCardsBySet(setId);
+                    const quantities = new Map<string, number>();
+                    existingCards.forEach(c => {
+                        const originalId = c.set?.id ? `${c.set.id}-${c.number}` : '';
+                        if (originalId) {
+                            quantities.set(originalId, (quantities.get(originalId) || 0) + 1);
+                        }
+                    });
+                    setCardQuantities(quantities);
+                }}
+                existingVariations={
+                    previewCard
+                        ? Array.from({ length: getCardQuantity(previewCard.id) }).map(() => 'Normal')
+                        : []
+                }
             />
         </div>
     );

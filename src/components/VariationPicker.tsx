@@ -21,7 +21,7 @@ const VariationPicker: React.FC<VariationPickerProps> = ({
 }) => {
     const cardSetId = card.set?.id || '';
     const releaseYear = card.set?.releaseDate ? parseInt(card.set.releaseDate.split('-')[0]) : undefined;
-    const variants = getSetVariants(cardSetId, card.supertype, releaseYear);
+    const variants = getSetVariants(cardSetId, card.supertype, releaseYear, card.subtypes, card.name);
     const hasSpecial = hasSpecialVariants(cardSetId);
 
     // Determine which variants can still be added

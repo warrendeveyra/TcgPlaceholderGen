@@ -63,13 +63,38 @@ export function getSpecialVariantInfo(setId: string): SpecialSetInfo | null {
 }
 
 /**
- * Get available variants for a card based on set and supertype
+ * Get available variants for a card based on set, supertype, subtypes, and name
  * @param setId - The set ID
  * @param supertype - The card's supertype ('Pokémon', 'Trainer', 'Energy')
  * @param releaseYear - The release year of the set
+ * @param subtypes - The card's subtypes (e.g., 'V', 'VMAX', 'GX', 'VSTAR', 'ex')
+ * @param name - The card's name (e.g., 'Pikachu VMAX')
  * @returns Array of variant names available
  */
-export function getSetVariants(setId: string, supertype?: string, releaseYear?: number): string[] {
+export function getSetVariants(
+    setId: string,
+    supertype?: string,
+    releaseYear?: number,
+    subtypes?: string[],
+    name?: string
+): string[] {
+    // Special card types that already have a base holo pattern and no reverse holo variant
+    const noVariantSubtypes = ['GX', 'V', 'VMAX', 'VSTAR', 'EX'];
+
+    // Check subtypes
+    const hasSpecialSubtype = subtypes && subtypes.some(st => noVariantSubtypes.includes(st.toUpperCase()));
+
+    // Check name ending (e.g., "Pikachu VMAX" or "Zekrom ex")
+    const cleanName = name?.trim() || '';
+    const hasSpecialName = noVariantSubtypes.some(kw => {
+        const regex = new RegExp(`\\b${kw}$`, 'i');
+        return regex.test(cleanName);
+    });
+
+    if (hasSpecialSubtype || hasSpecialName) {
+        return [];
+    }
+
     const info = SPECIAL_SETS[setId];
     if (!info) {
         // Sets released before 2002 don't have variants (Reverse Holo, etc.)

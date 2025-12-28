@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Check, Loader2 } from 'lucide-react';
+import { X, Plus, Loader2, Minus } from 'lucide-react';
 import { PokemonCard } from '../types/pokemon';
 import CardImage from './CardImage';
 import { addCustomCard } from '../services/customSets';
@@ -12,11 +12,12 @@ interface CardPreviewModalProps {
     card: PokemonCard | null;
     isOpen: boolean;
     onClose: () => void;
-    onAdd?: (card: PokemonCard) => void;
-    isAdded?: boolean;
+    // Props for AddCardModal context
+    onAdd?: (card: PokemonCard, variation?: string) => void;
     // Props for custom set variant addition
     customSetId?: string;
     onVariantAdded?: () => void;
+    onRemove?: (card: PokemonCard) => void;
     existingVariations?: string[]; // Variations already in the custom set for this card number
 }
 
@@ -25,9 +26,9 @@ const CardPreviewModal: React.FC<CardPreviewModalProps> = ({
     isOpen,
     onClose,
     onAdd,
-    isAdded = false,
     customSetId,
     onVariantAdded,
+    onRemove,
     existingVariations = []
 }) => {
     const [showVariantPicker, setShowVariantPicker] = useState(false);
@@ -46,6 +47,13 @@ const CardPreviewModal: React.FC<CardPreviewModalProps> = ({
 
     // Add a variant card
     const handleAddVariant = (variation: string) => {
+        if (onAdd) {
+            onAdd(card, variation);
+            onVariantAdded?.();
+            setShowVariantPicker(false);
+            return;
+        }
+
         if (!customSetId) return;
 
         addCustomCard(
@@ -67,7 +75,7 @@ const CardPreviewModal: React.FC<CardPreviewModalProps> = ({
         // Check for variants before opening picker
         const cardSetId = card.set?.id || '';
         const releaseYear = card.set?.releaseDate ? parseInt(card.set.releaseDate.split('-')[0]) : undefined;
-        const variants = getSetVariants(cardSetId, card.supertype, releaseYear);
+        const variants = getSetVariants(cardSetId, card.supertype, releaseYear, card.subtypes, card.name);
 
         if (variants.length === 0) {
             // Directly add as normal version if no variants exist
@@ -103,8 +111,8 @@ const CardPreviewModal: React.FC<CardPreviewModalProps> = ({
                     }
                 } as PokemonCard;
 
-                // Double check variants with full data (for accurate supertype)
-                const fullVariants = getSetVariants(cardSetId, fullData.supertype, releaseYear);
+                // Double check variants with full data (for accurate supertype, subtypes, and name)
+                const fullVariants = getSetVariants(cardSetId, fullData.supertype, releaseYear, fullData.subtypes, fullData.name);
                 if (fullVariants.length === 0) {
                     handleAddVariant('Normal');
                     return;
@@ -162,23 +170,59 @@ const CardPreviewModal: React.FC<CardPreviewModalProps> = ({
                             </div>
                         )}
 
-                        {/* Add Variant button - bottom right on the card */}
+                        {/* Add Variant / Quantity controls - bottom right on the card */}
                         {isCustomSetContext && !loadingCardData && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenVariantPicker();
-                                }}
-                                className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-pokemon-purple hover:bg-pokemon-purple/80 text-white text-sm font-bold shadow-lg transition-all"
-                            >
-                                <Plus className="w-4 h-4" />
+                            <div className="absolute bottom-3 right-3 flex items-center">
                                 {(() => {
                                     const cardSetId = card.set?.id || '';
                                     const releaseYear = card.set?.releaseDate ? parseInt(card.set.releaseDate.split('-')[0]) : undefined;
-                                    const variants = getSetVariants(cardSetId, card.supertype, releaseYear);
-                                    return variants.length > 0 ? 'Add Variant' : 'Add to Set';
+                                    const variants = getSetVariants(cardSetId, card.supertype, releaseYear, card.subtypes, card.name);
+
+                                    // If this is a special card that skips variants, check "Normal" quantity
+                                    const currentVar = card.variation || 'Normal';
+                                    const count = existingVariations.filter(v => v === currentVar).length;
+
+                                    if (count > 0 && variants.length === 0) {
+                                        return (
+                                            <div className="flex items-center gap-2 px-2 py-1.5 rounded-xl bg-black/70 backdrop-blur-md border border-white/10 shadow-lg">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onRemove?.(card);
+                                                        onVariantAdded?.(); // Refresh set data
+                                                    }}
+                                                    className="p-1 rounded-lg hover:bg-white/10 text-white transition-colors"
+                                                >
+                                                    <Minus className="w-4 h-4" />
+                                                </button>
+                                                <span className="text-white font-bold text-sm min-w-[20px] text-center">{count}</span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleAddVariant(currentVar);
+                                                    }}
+                                                    className="p-1 rounded-lg hover:bg-white/10 text-white transition-colors"
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenVariantPicker();
+                                            }}
+                                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-pokemon-purple hover:bg-pokemon-purple/80 text-white text-sm font-bold shadow-lg transition-all"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            {variants.length > 0 ? 'Add Variant' : 'Add to Set'}
+                                        </button>
+                                    );
                                 })()}
-                            </button>
+                            </div>
                         )}
 
                         {/* Loading indicator */}
@@ -233,32 +277,6 @@ const CardPreviewModal: React.FC<CardPreviewModalProps> = ({
                             )}
                         </div>
                     </div>
-
-                    {/* Add Button (for AddCardModal context) */}
-                    {onAdd && (
-                        <div className="mt-6">
-                            <button
-                                onClick={() => onAdd(card)}
-                                disabled={isAdded}
-                                className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${isAdded
-                                    ? 'bg-pokemon-green text-white cursor-default'
-                                    : 'bg-pokemon-blue hover:bg-pokemon-blue/90 text-white shadow-lg shadow-pokemon-blue/30'
-                                    }`}
-                            >
-                                {isAdded ? (
-                                    <>
-                                        <Check className="w-5 h-5" />
-                                        Added to Set
-                                    </>
-                                ) : (
-                                    <>
-                                        <Plus className="w-5 h-5" />
-                                        Add to Custom Set
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    )}
                 </motion.div>
 
                 {/* Variation Picker Overlay */}
