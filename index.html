@@ -17,6 +17,21 @@
 <body class="bg-slate-950 text-slate-50 antialiased">
   <div id="root"></div>
   <script>
+    // Asset load error handling (e.g. 404 on hashed JS/CSS files)
+    window.addEventListener('error', function (e) {
+      if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+        console.warn('Asset failed to load:', e.target.src || e.target.href);
+        // Only reload if we haven't already reloaded recently to avoid loops
+        const lastReload = sessionStorage.getItem('last_asset_reload');
+        const now = Date.now();
+        if (!lastReload || (now - parseInt(lastReload)) > 10000) {
+          sessionStorage.setItem('last_asset_reload', now.toString());
+          console.log('Detected stale assets. Force reloading page...');
+          window.location.reload(true);
+        }
+      }
+    }, true);
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/TcgPlaceholderGen/sw.js');
