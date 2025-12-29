@@ -162,6 +162,66 @@ export const addCustomCard = (
     return newCard;
 };
 
+// Add multiple cards to a custom set at once (more efficient for bulk creation)
+export const addCustomCardsBulk = (
+    setId: string,
+    cardsToAdd: Array<{
+        name: string,
+        number: string,
+        rarity?: string,
+        imageUrl?: string,
+        sourceCard?: PokemonCard,
+        variation?: string
+    }>
+): CustomCard[] => {
+    const allCards = getCustomCards();
+    const newCards: CustomCard[] = [];
+
+    cardsToAdd.forEach(item => {
+        const id = generateUniqueId('card');
+        const newCard: CustomCard = {
+            id,
+            name: item.name,
+            supertype: item.sourceCard?.supertype || 'Pokémon',
+            subtypes: item.sourceCard?.subtypes || [],
+            number: item.number,
+            artist: item.sourceCard?.artist || 'Custom',
+            rarity: item.rarity || 'Common',
+            variation: item.variation || item.sourceCard?.variation || 'Normal',
+            set: item.sourceCard?.set ? {
+                id: item.sourceCard.set.id,
+                name: item.sourceCard.set.name,
+                series: item.sourceCard.set.series,
+                printedTotal: item.sourceCard.set.printedTotal,
+                total: item.sourceCard.set.total,
+                releaseDate: item.sourceCard.set.releaseDate || '',
+                images: item.sourceCard.set.images || { symbol: '', logo: '' },
+            } : {
+                id: setId,
+                name: '',
+                series: '',
+                printedTotal: 0,
+                total: 0,
+                releaseDate: new Date().toISOString().split('T')[0],
+                images: { symbol: '', logo: '' },
+            },
+            images: {
+                small: item.imageUrl || item.sourceCard?.images.small || '',
+                large: item.sourceCard?.images.large || item.imageUrl || '',
+            },
+            isCustom: true,
+            customSetId: setId,
+        };
+        newCards.push(newCard);
+        allCards.push(newCard);
+    });
+
+    saveCustomCards(allCards);
+    updateSetCardCounts(setId);
+
+    return newCards;
+};
+
 // Update a custom card
 export const updateCustomCard = (id: string, updates: Partial<CustomCard>): CustomCard | null => {
     const cards = getCustomCards();

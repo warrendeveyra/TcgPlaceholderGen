@@ -76,10 +76,24 @@ export function getSetVariants(
     supertype?: string,
     releaseYear?: number,
     subtypes?: string[],
-    name?: string
+    name?: string,
+    cardId?: string,
+    printedTotal?: number
 ): string[] {
     // Special card types that already have a base holo pattern and no reverse holo variant
     const noVariantSubtypes = ['GX', 'V', 'VMAX', 'VSTAR', 'V-UNION', 'EX'];
+
+    // Check if it's a Secret Rare / Full Art (numbered above printed total)
+    if (cardId && printedTotal && printedTotal > 0) {
+        // Extract number from end of ID (e.g. "sv10.5b-120")
+        const numberMatch = cardId.match(/-(\d+)$/);
+        if (numberMatch) {
+            const cardNum = parseInt(numberMatch[1]);
+            if (cardNum > printedTotal) {
+                return [];
+            }
+        }
+    }
 
     // Ace Spec cards - these don't have reverse holo variants
     const ACE_SPEC_CARDS = [
