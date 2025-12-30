@@ -462,27 +462,29 @@ const PrintView: React.FC<PrintViewProps> = ({ cards, onClose }) => {
                                     </div>
 
                                     {/* Variation Overlay */}
-                                    {(card.variation === 'Reverse' || card.variation === 'Reverse Holo') && (
-                                        <img
-                                            src={unoReverseSvg}
-                                            alt="Reverse Holo"
-                                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/2 opacity-25 pointer-events-none z-[5]"
-                                        />
-                                    )}
-                                    {card.variation === 'Poke Ball Holo' && (
-                                        <img
-                                            src={pokeballSvg}
-                                            alt="Poke Ball Holo"
-                                            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 opacity-30 pointer-events-none z-[5] ${settings.isGrayscale ? 'grayscale' : ''}`}
-                                        />
-                                    )}
-                                    {card.variation === 'Master Ball Holo' && (
-                                        <img
-                                            src={masterballSvg}
-                                            alt="Master Ball Holo"
-                                            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 opacity-30 pointer-events-none z-[5] ${settings.isGrayscale ? 'grayscale' : ''}`}
-                                        />
-                                    )}
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
+                                        {(card.variation === 'Reverse' || card.variation === 'Reverse Holo') && (
+                                            <img
+                                                src={unoReverseSvg}
+                                                alt="Reverse Holo"
+                                                className="w-1/2 opacity-25"
+                                            />
+                                        )}
+                                        {card.variation === 'Poke Ball Holo' && (
+                                            <img
+                                                src={pokeballSvg}
+                                                alt="Poke Ball Holo"
+                                                className={`w-1/3 opacity-30 ${settings.isGrayscale ? 'grayscale' : ''}`}
+                                            />
+                                        )}
+                                        {card.variation === 'Master Ball Holo' && (
+                                            <img
+                                                src={masterballSvg}
+                                                alt="Master Ball Holo"
+                                                className={`w-1/3 opacity-30 ${settings.isGrayscale ? 'grayscale' : ''}`}
+                                            />
+                                        )}
+                                    </div>
 
                                     <div className="z-10 text-center flex flex-col h-full justify-between py-4">
                                         {settings.showTopText ? (

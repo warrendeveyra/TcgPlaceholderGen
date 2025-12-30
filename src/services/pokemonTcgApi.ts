@@ -104,7 +104,7 @@ const convertGraphQLCard = (card: any, setInfo?: PokemonSet): PokemonCard => {
             // Fallback if no set info provided
             id: card.set?.id || '',
             name: card.set?.name || '',
-            series: card.set?.series?.name || '',
+            series: card.set?.serie?.name || card.set?.series?.name || '',
             printedTotal: card.set?.cardCount?.official || 0,
             total: card.set?.cardCount?.total || 0,
             releaseDate: card.set?.releaseDate || '',
@@ -226,6 +226,9 @@ export const pokemonTcgApi = {
                         name
                         logo
                         symbol
+                        serie {
+                            name
+                        }
                         cardCount {
                             official
                             total
@@ -344,6 +347,9 @@ export const pokemonTcgApi = {
                         name
                         logo
                         symbol
+                        serie {
+                            name
+                        }
                     }
                     variants {
                         normal
@@ -384,6 +390,9 @@ export const pokemonTcgApi = {
                         name
                         logo
                         symbol
+                        serie {
+                            name
+                        }
                     }
                     variants {
                         normal
@@ -435,6 +444,9 @@ export const pokemonTcgApi = {
                         name
                         logo
                         symbol
+                        serie {
+                            name
+                        }
                         cardCount {
                             official
                             total

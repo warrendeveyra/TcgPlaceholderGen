@@ -89,13 +89,7 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                     loadedCards = response.data;
                 }
 
-                // Memory Optimization: Prune redundant set data from each card
-                const prunedCards = loadedCards.map(card => ({
-                    ...card,
-                    set: { id: card.set.id } as any // Keep only ID, we have set info in currentSet
-                }));
-
-                setCards(prunedCards);
+                setCards(loadedCards);
             } catch (err) {
                 setError('Failed to load cards for this set.');
                 console.error(err);
@@ -520,50 +514,53 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
             {/* Floating Action Bar for Selection Mode */}
             <AnimatePresence>
                 {isSelectMode && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 100 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 100 }}
-                        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-900/90 border border-white/10 backdrop-blur-md rounded-2xl shadow-2xl px-6 py-4 flex items-center gap-4"
-                    >
-                        <div className="flex items-center gap-2 text-white">
-                            <CheckSquare className="w-5 h-5 text-pokemon-purple" />
-                            <span className="font-semibold">{selectedCardIds.size}</span>
-                            <span className="text-slate-400">selected</span>
-                        </div>
+                    <div className="fixed inset-x-0 bottom-6 z-[100] flex justify-center pointer-events-none px-4">
+                        <motion.div
+                            initial={{ opacity: 0, y: 100 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 100 }}
+                            className="pointer-events-auto bg-slate-900/95 border border-white/10 backdrop-blur-md rounded-2xl shadow-2xl px-2.5 py-2 sm:px-6 sm:py-4 flex items-center gap-1.5 sm:gap-4 w-auto max-w-full"
+                        >
+                            <div className="flex items-center gap-1 sm:gap-2 text-white whitespace-nowrap">
+                                <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-pokemon-purple" />
+                                <span className="font-semibold text-xs sm:text-base">{selectedCardIds.size}</span>
+                                <span className="text-slate-400 text-[10px] sm:text-base ml-0.5">selected</span>
+                            </div>
 
-                        <div className="w-px h-8 bg-white/10" />
+                            <div className="w-px h-5 sm:h-8 bg-white/10" />
 
-                        <div className="flex gap-2">
-                            {selectedCardIds.size === displayCards.length ? (
+                            <div className="flex gap-1 sm:gap-2">
+                                {selectedCardIds.size === displayCards.length ? (
+                                    <button
+                                        onClick={deselectAllCards}
+                                        className="px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[10px] sm:text-sm font-medium transition-all whitespace-nowrap"
+                                    >
+                                        Deselect <span className="hidden xs:inline">All</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={selectAllCards}
+                                        className="px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[10px] sm:text-sm font-medium transition-all whitespace-nowrap"
+                                    >
+                                        Select <span className="hidden xs:inline">All</span>
+                                    </button>
+                                )}
+
                                 <button
-                                    onClick={deselectAllCards}
-                                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-all"
+                                    onClick={() => setShowBulkDeleteConfirm(true)}
+                                    disabled={selectedCardIds.size === 0}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-sm font-semibold transition-all whitespace-nowrap ${selectedCardIds.size > 0
+                                        ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20'
+                                        : 'bg-red-500/20 text-red-400/50 cursor-not-allowed border border-red-500/10'
+                                        }`}
                                 >
-                                    Deselect All
+                                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    <span className="hidden xs:inline">Delete Selected</span>
+                                    <span className="xs:hidden">Delete</span>
                                 </button>
-                            ) : (
-                                <button
-                                    onClick={selectAllCards}
-                                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-all"
-                                >
-                                    Select All
-                                </button>
-                            )}
-
-                            <button
-                                onClick={() => setShowBulkDeleteConfirm(true)}
-                                disabled={selectedCardIds.size === 0}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${selectedCardIds.size > 0
-                                    ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20'
-                                    : 'bg-red-500/20 text-red-400/50 cursor-not-allowed border border-red-500/10'
-                                    }`}
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                Delete Selected
-                            </button>
-                        </div>
-                    </motion.div>
+                            </div>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
 
