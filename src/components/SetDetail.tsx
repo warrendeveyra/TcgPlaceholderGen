@@ -449,17 +449,25 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
             <BinderCalculator totalCards={displayCards.length} />
 
             {/* Standard Reverse Holo Set Info Banner */}
-            {!isCustomSet && canHaveMasterSet && !isSpecialSet && (
+            {!isCustomSet && canHaveMasterSet && viewMode === 'master' && (
                 <div className="mb-6 mx-auto">
-                    <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 flex items-start gap-3">
+                    <div className="p-4 rounded-xl bg-slate-800/50 border border-border-slate-700/50 flex items-start gap-3">
                         <Info className="w-5 h-5 text-pokemon-blue mt-0.5" />
                         <div>
-                            <p className="text-white font-bold text-sm mb-1">Standard Reverse Holo Set</p>
+                            <p className="text-white font-bold text-sm mb-1">Master Set Information</p>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                This set contains <span className="text-pokemon-purple font-medium">Reverse Holo</span> variants for most Pokémon and Trainer cards.
+                                This set contains {isSpecialSet ? (
+                                    <><span className="text-pokemon-purple font-medium">Reverse Holo</span>, <span className="text-pokemon-blue font-medium">Poké Ball Holo</span>, and <span className="text-pokemon-yellow font-medium">Master Ball Holo</span></>
+                                ) : (
+                                    <span className="text-pokemon-purple font-medium">Reverse Holo</span>
+                                )} variants for most cards.
                             </p>
-                            <p className="text-slate-500 text-xs mt-2">
-                                To track your Master Set, use "Create Custom Set" and manually add the Reverse Holo versions.
+                            <p className="text-amber-400 text-xs mt-2 font-medium flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                <span>This master set is auto-generated and may not be 100% accurate. Please use caution and verify with official sources before printing.</span>
+                            </p>
+                            <p className="text-slate-500 text-xs mt-2 font-medium">
+                                To track your collection, use "Create Custom Set" to copy these cards into a personal set.
                             </p>
                         </div>
                     </div>
@@ -777,27 +785,20 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
 
                             {/* Disclaimer for Master Set */}
                             {createMode === 'master' && canHaveMasterSet && (
-                                <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                                <div className="mb-6 px-4">
                                     <div className="flex gap-3">
-                                        <Info className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                                        <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                                         <div className="text-sm">
-                                            <p className="text-amber-200 font-medium mb-2">⚠️ Accuracy Notice</p>
-                                            <p className="text-slate-300 mb-2">
-                                                Master set data is auto-generated and may not be 100% accurate. Please double-check card variants against official sources before printing.
+                                            <p className="text-amber-200 font-bold mb-1">Master Set Accuracy</p>
+                                            <p className="text-slate-300 mb-2 font-medium leading-relaxed">
+                                                This master set is auto-generated and may not be 100% accurate. Please be cautious and verify all variants against official sources before printing.
                                             </p>
-                                            {isSpecialSet ? (
-                                                <p className="text-slate-400 text-xs">
-                                                    <span className="text-pokemon-purple font-medium">Variants included:</span> Reverse Holo, Poké Ball Holo, Master Ball Holo.
-                                                    <br />
-                                                    <span className="text-slate-500">Note: Trainer cards only have Reverse Holo and Poké Ball Holo variants.</span>
-                                                </p>
-                                            ) : (
-                                                <p className="text-slate-400 text-xs">
-                                                    <span className="text-pokemon-purple font-medium">Variants included:</span> Reverse Holo for most Pokémon and Trainer cards.
-                                                    <br />
-                                                    <span className="text-slate-500">Note: V, VMAX, GX, EX, and special cards typically don't have reverse holo variants.</span>
-                                                </p>
-                                            )}
+                                            <p className="text-slate-500 text-xs">
+                                                {isSpecialSet
+                                                    ? "Includes Reverse Holo, Poké Ball Holo, and Master Ball Holo variants."
+                                                    : "Includes Reverse Holo variants for most Pokémon and Trainer cards."
+                                                }
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
