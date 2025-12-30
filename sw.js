@@ -1,6 +1,6 @@
 // Service Worker for TCG Master Set Generator
 // Version is automatically updated during build - change this to force update
-const CACHE_VERSION = 'v3-' + new Date().toISOString().split('T')[0];
+const CACHE_VERSION = 'v4-' + new Date().toISOString().split('T')[0];
 const CACHE_NAME = 'tcg-gen-' + CACHE_VERSION;
 const BASE_PATH = '/TcgPlaceholderGen/';
 

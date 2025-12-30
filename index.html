@@ -3,20 +3,22 @@
 
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob: data:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; connect-src 'self' https: ws: wss:; font-src 'self' https: data:;" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@700;800;900&display=swap"
     rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="/TcgPlaceholderGen/pokeball.svg" />
-  <link rel="manifest" href="/TcgPlaceholderGen/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="pokeball.svg" />
+  <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0f172a" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TCG Master Set Placeholder Generator</title>
   <meta name="description" content="Generate printable placeholders for TCG master sets" />
-  <link rel="apple-touch-icon" href="/TcgPlaceholderGen/icon-192.png" />
-  <script type="module" crossorigin src="/TcgPlaceholderGen/assets/index-C-WfTlIo.js"></script>
-  <link rel="stylesheet" crossorigin href="/TcgPlaceholderGen/assets/index-DwU-Etr5.css">
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <script type="module" crossorigin src="/TcgPlaceholderGen/assets/index-DH0dVDMu.js"></script>
+  <link rel="stylesheet" crossorigin href="/TcgPlaceholderGen/assets/index-BaIzHUT0.css">
 </head>
 
 <body class="bg-slate-950 text-slate-50 antialiased">
@@ -39,7 +41,7 @@
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/TcgPlaceholderGen/sw.js');
+        navigator.serviceWorker.register('sw.js');
       });
     }
   </script>
