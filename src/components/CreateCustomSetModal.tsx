@@ -53,10 +53,15 @@ const CreateCustomSetModal: React.FC<CreateCustomSetModalProps> = ({ isOpen, onC
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        <label
+                            htmlFor="set-name"
+                            className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2"
+                        >
                             Set Name *
                         </label>
                         <input
+                            id="set-name"
+                            name="set-name"
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -67,10 +72,15 @@ const CreateCustomSetModal: React.FC<CreateCustomSetModalProps> = ({ isOpen, onC
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        <label
+                            htmlFor="set-series"
+                            className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2"
+                        >
                             Series
                         </label>
                         <input
+                            id="set-series"
+                            name="set-series"
                             type="text"
                             value={series}
                             onChange={(e) => setSeries(e.target.value)}

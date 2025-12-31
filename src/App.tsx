@@ -183,7 +183,10 @@ function MainContent() {
                         >
                             <div className="relative group">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-pokemon-blue transition-colors" />
+                                <label htmlFor="set-search" className="sr-only">Search sets</label>
                                 <input
+                                    id="set-search"
+                                    name="set-search"
                                     type="text"
                                     placeholder="Search sets..."
                                     value={searchTerm}
@@ -407,8 +410,15 @@ function MainContent() {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Gemini API Key</label>
+                                    <label
+                                        htmlFor="gemini-api-key"
+                                        className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2"
+                                    >
+                                        Gemini API Key
+                                    </label>
                                     <input
+                                        id="gemini-api-key"
+                                        name="gemini-api-key"
                                         type="password"
                                         value={apiKey}
                                         onChange={(e) => setApiKey(e.target.value)}
@@ -525,33 +535,34 @@ function MainContent() {
                     }}
                 />
 
-                {/* Update Available Toast */}
                 <AnimatePresence>
                     {showUpdateToast && (
-                        <motion.div
-                            initial={{ y: 100, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 100, opacity: 0 }}
-                            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] bg-gradient-to-r from-pokemon-blue to-pokemon-purple px-4 py-3 rounded-xl shadow-2xl border border-white/20 flex items-center gap-3"
-                        >
-                            <RefreshCw className="w-5 h-5 text-white animate-spin" />
-                            <span className="text-white font-medium text-sm">New version available!</span>
-                            <button
-                                onClick={() => {
-                                    setShowUpdateToast(false);
-                                    window.location.reload();
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-white text-pokemon-blue font-semibold text-sm hover:bg-white/90 transition-colors"
+                        <div className="fixed inset-x-0 bottom-4 z-[200] flex justify-center pointer-events-none px-4">
+                            <motion.div
+                                initial={{ y: 100, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 100, opacity: 0 }}
+                                className="pointer-events-auto bg-gradient-to-r from-pokemon-blue to-pokemon-purple px-4 py-3 rounded-xl shadow-2xl border border-white/20 flex items-center gap-3 w-auto max-w-full"
                             >
-                                Refresh
-                            </button>
-                            <button
-                                onClick={() => setShowUpdateToast(false)}
-                                className="text-white/60 hover:text-white text-lg leading-none"
-                            >
-                                ×
-                            </button>
-                        </motion.div>
+                                <RefreshCw className="w-5 h-5 text-white animate-spin" />
+                                <span className="text-white font-medium text-sm">New version available!</span>
+                                <button
+                                    onClick={() => {
+                                        setShowUpdateToast(false);
+                                        window.location.reload();
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-white text-pokemon-blue font-semibold text-sm hover:bg-white/90 transition-colors"
+                                >
+                                    Refresh
+                                </button>
+                                <button
+                                    onClick={() => setShowUpdateToast(false)}
+                                    className="text-white/60 hover:text-white text-lg leading-none"
+                                >
+                                    ×
+                                </button>
+                            </motion.div>
+                        </div>
                     )}
                 </AnimatePresence>
             </div>

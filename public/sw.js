@@ -1,6 +1,6 @@
 // Service Worker for TCG Master Set Generator
 // Version is automatically updated during build - change this to force update
-const CACHE_VERSION = 'v3-' + new Date().toISOString().split('T')[0];
+const CACHE_VERSION = 'v4-' + new Date().toISOString().split('T')[0];
 const CACHE_NAME = 'tcg-gen-' + CACHE_VERSION;
 const BASE_PATH = '/TcgPlaceholderGen/';
 
@@ -49,6 +49,11 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - Network-first for HTML, cache-first for assets
 self.addEventListener('fetch', (event) => {
+    // Skip non-GET requests and non-http/https protocols (e.g. chrome-extension)
+    if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
+        return;
+    }
+
     const url = new URL(event.request.url);
 
     // Network-first for HTML pages (always get latest)
@@ -83,10 +88,22 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 }
                 return fetch(event.request).then((response) => {
-                    // Don't cache non-successful responses
-                    if (!response || response.status !== 200 || response.type !== 'basic') {
+                    // Check if we should cache this response
+                    // We cache:
+                    // 1. Success responses (200) from our own origin (basic)
+                    // 2. Successful CORS responses from TCGdex CDN
+                    // 3. Opaque responses for images (status 0) from allowed CDNs
+                    const isAllowedCdn = url.hostname.includes('tcgdex.net') || url.hostname.includes('googleusercontent.com');
+                    const isImage = event.request.destination === 'image' || url.pathname.match(/\.(png|jpg|jpeg|svg|webp)$/i);
+
+                    const shouldCache =
+                        (response.status === 200 && (response.type === 'basic' || response.type === 'cors')) ||
+                        (response.status === 0 && isAllowedCdn && isImage);
+
+                    if (!shouldCache) {
                         return response;
                     }
+
                     // Cache the fetched resource
                     const responseClone = response.clone();
                     caches.open(CACHE_NAME).then(cache => {

@@ -70,13 +70,13 @@ Deploy to GitHub Pages:
 npm run deploy
 ```
 
-## �️ Roadmap
+## 🗺️ Roadmap
 
 Planned features for future releases:
 
 | TCG | Languages | Status |
-|-----|-----------|--------|
-| **Pokémon TCG** | 🇯🇵 Japanese | 🔜 Planned |
+| :--- | :--- | :--- |
+| **Pokémon TCG** | 🇯🇵 Japanese | 🏗️ Ongoing |
 | **Pokémon TCG** | 🇰🇷 Korean | 🔜 Planned |
 | **Pokémon TCG** | 🇨🇳 Chinese | 🔜 Planned |
 | **Yu-Gi-Oh! TCG** | 🇺🇸 English / 🇯🇵 Japanese | 🔜 Planned |

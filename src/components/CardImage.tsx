@@ -89,6 +89,7 @@ const CardImage: React.FC<CardImageProps> = ({ src, alt, className = '' }) => {
             <img
                 src={src}
                 alt={alt}
+                crossOrigin="anonymous"
                 className={`w-full h-full object-cover transition-opacity ${isLoading ? 'opacity-0' : 'opacity-100'}`}
                 loading="lazy"
                 onLoad={() => setIsLoading(false)}

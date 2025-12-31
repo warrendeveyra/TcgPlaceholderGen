@@ -128,7 +128,10 @@ const SetGrid: React.FC = () => {
                     {/* Search */}
                     <div className="relative flex-grow min-w-[200px] max-w-[300px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <label htmlFor="set-grid-search" className="sr-only">Search sets</label>
                         <input
+                            id="set-grid-search"
+                            name="set-grid-search"
                             type="text"
                             placeholder="Search sets..."
                             value={searchQuery}

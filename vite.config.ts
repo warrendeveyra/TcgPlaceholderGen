@@ -13,4 +13,17 @@ export default defineConfig({
             path: '/ws',
         },
     },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vendor-react': ['react', 'react-dom'],
+                    'vendor-jspdf': ['jspdf'],
+                    'vendor-html2canvas': ['html2canvas'],
+                    'vendor-ui': ['framer-motion', 'lucide-react'],
+                    'vendor-utils': ['axios', '@google/genai', '@supabase/supabase-js'],
+                },
+            },
+        },
+    },
 })

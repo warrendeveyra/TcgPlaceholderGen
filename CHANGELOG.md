@@ -4,7 +4,32 @@ All notable changes to the **TCG Placeholder Generator** project will be documen
 
 ---
 
-## 🎉 [1.2.0] - December 28, 2025
+## 📦 [1.3.0] - December 31, 2025
+
+### ✨ New Features
+
+#### Bulk Actions
+
+- **Bulk Add to Custom Sets** — Select multiple cards from any official or master set and add them to your custom sets simultaneously via a new dedicated modal.
+
+---
+
+### 🐛 Fixed
+
+- **Manifest Integrity** — Resolved a syntax error in the web manifest file that could interfere with PWA installation.
+- **Mobile UI** — Fixed inconsistent centering of the floating action bar on smaller devices.
+- **Set Visibility** — Resolved an issue where set names were not appearing on generated cards.
+
+---
+
+### 🔧 Developer Experience
+
+- **Atomic Bulk Operations** — Added `addCustomCardsBulk` to the service layer for more efficient and reliable batch updates to the local database.
+- **Build Chunking** — Implemented manual chunk splitting for heavy dependencies (jsPDF, html2canvas, etc.) to resolve bundle size warnings and improve load performance.
+
+---
+
+## 📦 [1.2.0] - December 28, 2025
 
 ### ✨ New Features
 
@@ -82,7 +107,6 @@ All notable changes to the **TCG Placeholder Generator** project will be documen
 
 ## 🚀 Planned Features
 
-- **Bulk Add to Custom Sets** — Add multiple cards with one click.
 - **Print Template Presets** — Save and switch between print profiles.
 - **Custom Margins & Scale** — Fine-grained PDF layout control.
 - **Watermark Customization** — Upload custom SVG or image watermarks.

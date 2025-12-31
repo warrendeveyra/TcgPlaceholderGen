@@ -65,7 +65,10 @@ const ShareSetModal: React.FC<ShareSetModalProps> = ({ isOpen, onClose, shareUrl
 
                     {/* Share URL */}
                     <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-3 mb-6">
+                        <label htmlFor="share-url" className="sr-only">Share URL</label>
                         <input
+                            id="share-url"
+                            name="share-url"
                             type="text"
                             value={shareUrl}
                             readOnly

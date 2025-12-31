@@ -66,10 +66,15 @@ const EditCustomSetModal: React.FC<EditCustomSetModalProps> = ({ isOpen, onClose
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        <label
+                            htmlFor="edit-set-name"
+                            className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2"
+                        >
                             Set Name *
                         </label>
                         <input
+                            id="edit-set-name"
+                            name="edit-set-name"
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -80,10 +85,15 @@ const EditCustomSetModal: React.FC<EditCustomSetModalProps> = ({ isOpen, onClose
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        <label
+                            htmlFor="edit-set-series"
+                            className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2"
+                        >
                             Series / Description
                         </label>
                         <input
+                            id="edit-set-series"
+                            name="edit-set-series"
                             type="text"
                             value={series}
                             onChange={(e) => setSeries(e.target.value)}

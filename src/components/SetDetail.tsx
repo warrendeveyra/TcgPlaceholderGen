@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { PokemonCard, PokemonSet } from '../types/pokemon';
 import { pokemonTcgApi } from '../services/pokemonTcgApi';
 import { getCustomCardsBySet, deleteCustomCard, deleteCustomCards, deleteCustomSet, createCustomSet, addCustomCard, addCustomCardsBulk, CustomSet } from '../services/customSets';
-import { ArrowLeft, Loader2, Printer, Plus, Trash2, Copy, Share2, CheckSquare, AlertTriangle, Pencil, ChevronDown, Info } from 'lucide-react';
+import { ArrowLeft, Loader2, Printer, Plus, Trash2, Copy, Share2, CheckSquare, AlertTriangle, Pencil, ChevronDown, Info, FolderPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PrintView from './PrintView';
 import BinderCalculator from './BinderCalculator';
@@ -11,6 +11,7 @@ import CardPreviewModal from './CardPreviewModal';
 import EditCustomSetModal from './EditCustomSetModal';
 import SuccessModal from './SuccessModal';
 import ShareSetModal from './ShareSetModal';
+import BulkAddModal from './BulkAddModal';
 import GridCard from './GridCard';
 import { shareCustomSet } from '../services/shareService';
 import { useSetContext } from '../context/SetContext';
@@ -35,6 +36,7 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
     const [createdCustomSet, setCreatedCustomSet] = useState<(PokemonSet & { isCustom?: boolean }) | null>(null);
     const [showCreateConfirm, setShowCreateConfirm] = useState(false);
     const [createMode, setCreateMode] = useState<'standard' | 'master'>('standard');
+    const [showBulkAdd, setShowBulkAdd] = useState(false);
 
     // Selection mode state
     const [isSelectMode, setIsSelectMode] = useState(false);
@@ -396,22 +398,20 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                         </button>
                     )}
 
-                    {/* Select Mode Toggle (for custom sets) */}
-                    {isCustomSet && (
-                        <button
-                            onClick={() => {
-                                setIsSelectMode(!isSelectMode);
-                                if (isSelectMode) setSelectedCardIds(new Set());
-                            }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all font-medium text-sm ${isSelectMode
-                                ? 'bg-pokemon-purple text-white border-pokemon-purple shadow-lg shadow-pokemon-purple/20'
-                                : 'bg-slate-800/50 border-slate-600/50 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500/50'
-                                }`}
-                        >
-                            <CheckSquare className="w-4 h-4" />
-                            {isSelectMode ? 'Cancel Selection' : 'Select'}
-                        </button>
-                    )}
+                    {/* Select Mode Toggle */}
+                    <button
+                        onClick={() => {
+                            setIsSelectMode(!isSelectMode);
+                            if (isSelectMode) setSelectedCardIds(new Set());
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all font-medium text-sm ${isSelectMode
+                            ? 'bg-pokemon-purple text-white border-pokemon-purple shadow-lg shadow-pokemon-purple/20'
+                            : 'bg-slate-800/50 border-slate-600/50 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500/50'
+                            }`}
+                    >
+                        <CheckSquare className="w-4 h-4" />
+                        {isSelectMode ? 'Cancel Selection' : 'Select'}
+                    </button>
 
                     {/* Share Button for Custom Sets */}
                     {isCustomSet && !isSelectMode && (
@@ -554,18 +554,33 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                                     </button>
                                 )}
 
-                                <button
-                                    onClick={() => setShowBulkDeleteConfirm(true)}
-                                    disabled={selectedCardIds.size === 0}
-                                    className={`flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-sm font-semibold transition-all whitespace-nowrap ${selectedCardIds.size > 0
-                                        ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20'
-                                        : 'bg-red-500/20 text-red-400/50 cursor-not-allowed border border-red-500/10'
-                                        }`}
-                                >
-                                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                    <span className="hidden xs:inline">Delete Selected</span>
-                                    <span className="xs:hidden">Delete</span>
-                                </button>
+                                {isCustomSet ? (
+                                    <button
+                                        onClick={() => setShowBulkDeleteConfirm(true)}
+                                        disabled={selectedCardIds.size === 0}
+                                        className={`flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-sm font-semibold transition-all whitespace-nowrap ${selectedCardIds.size > 0
+                                            ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20'
+                                            : 'bg-red-500/20 text-red-400/50 cursor-not-allowed border border-red-500/10'
+                                            }`}
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                        <span className="hidden xs:inline">Delete Selected</span>
+                                        <span className="xs:hidden">Delete</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => setShowBulkAdd(true)}
+                                        disabled={selectedCardIds.size === 0}
+                                        className={`flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-sm font-semibold transition-all whitespace-nowrap ${selectedCardIds.size > 0
+                                            ? 'bg-pokemon-blue hover:bg-pokemon-blue/90 text-white shadow-lg shadow-pokemon-blue/20'
+                                            : 'bg-pokemon-blue/20 text-pokemon-blue/50 cursor-not-allowed border border-pokemon-blue/10'
+                                            }`}
+                                    >
+                                        <FolderPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                        <span className="hidden xs:inline">Add to Custom Set</span>
+                                        <span className="xs:hidden">Add</span>
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     </div>
@@ -578,6 +593,17 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                 onClose={() => setShowAddCard(false)}
                 setId={currentSet.id}
                 onCardAdded={refreshCards}
+            />
+
+            <BulkAddModal
+                isOpen={showBulkAdd}
+                onClose={() => setShowBulkAdd(false)}
+                selectedCards={displayCards.filter(c => selectedCardIds.has(c.id))}
+                onSuccess={() => {
+                    setIsSelectMode(false);
+                    setSelectedCardIds(new Set());
+                    refreshCustomSets();
+                }}
             />
 
             <CardPreviewModal
