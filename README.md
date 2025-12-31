@@ -1,6 +1,6 @@
 # TCG Master Set Gen 🎴
 
-> Complete your binder organization with AI-powered placeholder generation.
+> Complete your binder organization with Placeholder generation and  AI-powered binder recommendations.
 
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://warrendeveyra.github.io/TcgPlaceholderGen/)
 
@@ -18,7 +18,7 @@ A web app for Pokémon TCG collectors to generate placeholder cards for missing 
 
 - 📚 **Browse Official Sets** — Access all Pokémon TCG sets via the official API
 - 🎨 **Custom Sets** — Create and manage your own custom card collections
-- 🤖 **AI-Powered Generation** — Generate placeholder images using Google Gemini AI
+- 🤖 **AI Binder Recommendations** — Get expert advice on the best binders for your collection using Google Gemini AI
 - 📱 **PWA Support** — Install as an app on mobile or desktop
 - 🖨️ **Print Ready** — Export placeholders for printing
 - 🌙 **Dark Mode** — Premium dark UI designed for long sessions
@@ -34,7 +34,7 @@ A web app for Pokémon TCG collectors to generate placeholder cards for missing 
 - **Tailwind CSS** — Utility-first styling
 - **Framer Motion** — Smooth animations
 - **Pokémon TCG API** — Card data
-- **Google Gemini AI** — Placeholder generation
+- **Google Gemini AI** — Binder brand recommendations
 
 ## 📦 Installation
 
@@ -54,7 +54,7 @@ npm run dev
 
 ### Gemini API Key
 
-To use AI-powered placeholder generation:
+To use AI-powered binder recommendations:
 
 1. Get a free API key from [Google AI Studio](https://aistudio.google.com/)
 2. Open the app and click the ⚙️ Settings icon
