@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { PokemonCard, PokemonSet } from '../types/pokemon';
 import { pokemonTcgApi } from '../services/pokemonTcgApi';
 import { getCustomCardsBySet, deleteCustomCard, deleteCustomCards, deleteCustomSet, createCustomSet, addCustomCard, addCustomCardsBulk, CustomSet } from '../services/customSets';
-import { ArrowLeft, Loader2, Printer, Plus, Trash2, Copy, Share2, CheckSquare, AlertTriangle, Pencil, ChevronDown, Info, FolderPlus } from 'lucide-react';
+import { ArrowLeft, Loader2, Printer, Plus, Trash2, Copy, Share2, CheckSquare, AlertTriangle, Pencil, ChevronDown, Info, FolderPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PrintView from './PrintView';
 import BinderCalculator from './BinderCalculator';
@@ -51,8 +51,10 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
     const [viewMode, setViewMode] = useState<'standard' | 'master'>('standard');
     const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
     const [showFullArts, setShowFullArts] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const perPage = 48; // Moderate page size for performance
 
-    const { refreshCustomSets } = useSetContext();
+    const { refreshCustomSets, showEnglishNames } = useSetContext();
 
     const isCustomSet = !!currentSet.isCustom;
 
@@ -147,40 +149,6 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
         setSelectedCardIds(newSelection);
     };
 
-    const selectAllCards = () => {
-        setSelectedCardIds(new Set(displayCards.map(c => c.id)));
-    };
-
-    const deselectAllCards = () => {
-        setSelectedCardIds(new Set());
-    };
-
-    const confirmBulkDelete = () => {
-        deleteCustomCards(Array.from(selectedCardIds));
-        setSelectedCardIds(new Set());
-        setShowBulkDeleteConfirm(false);
-        setIsSelectMode(false);
-        refreshCards();
-    };
-
-    const handleShareSet = async () => {
-        try {
-            setIsSharing(true);
-            const result = await shareCustomSet(currentSet, cards);
-            if (result.success && result.shareUrl) {
-                setShareUrl(result.shareUrl);
-                setShowShareModal(true);
-            } else {
-                throw new Error(result.error || 'Failed to generate share link');
-            }
-        } catch (err) {
-            console.error('Failed to share set:', err);
-            alert('Failed to generate share link. Please try again.');
-        } finally {
-            setIsSharing(false);
-        }
-    };
-
     // Calculate release year for variant eligibility
     const releaseYear = currentSet.releaseDate ? parseInt(currentSet.releaseDate.split('-')[0]) : 0;
     const canHaveMasterSet = !isCustomSet && releaseYear >= 2002;
@@ -220,7 +188,8 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
         return expandedCards;
     }, [cards, canHaveMasterSet, currentSet.id, releaseYear]);
 
-    const getFilteredCards = () => {
+    // Memoize the final display cards to avoid expensive re-sorting on every render
+    const displayCards = useMemo(() => {
         // Use master set cards if in master mode, otherwise base cards
         let baseCards = (!isCustomSet && viewMode === 'master') ? [...masterSetCards] : [...cards];
 
@@ -251,9 +220,52 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
             const orderB = variationOrder[b.variation || 'Normal'] ?? 99;
             return orderA - orderB;
         });
+    }, [masterSetCards, cards, isCustomSet, viewMode, showFullArts, currentSet.printedTotal]);
+
+    const selectAllCards = () => {
+        setSelectedCardIds(new Set(displayCards.map(c => c.id)));
     };
 
-    const displayCards = getFilteredCards();
+    const deselectAllCards = () => {
+        setSelectedCardIds(new Set());
+    };
+
+    const confirmBulkDelete = () => {
+        deleteCustomCards(Array.from(selectedCardIds));
+        setSelectedCardIds(new Set());
+        setShowBulkDeleteConfirm(false);
+        setIsSelectMode(false);
+        refreshCards();
+    };
+
+    const handleShareSet = async () => {
+        try {
+            setIsSharing(true);
+            const result = await shareCustomSet(currentSet, cards);
+            if (result.success && result.shareUrl) {
+                setShareUrl(result.shareUrl);
+                setShowShareModal(true);
+            } else {
+                throw new Error(result.error || 'Failed to generate share link');
+            }
+        } catch (err) {
+            console.error('Failed to share set:', err);
+            alert('Failed to generate share link. Please try again.');
+        } finally {
+            setIsSharing(false);
+        }
+    };
+
+    const totalPages = Math.ceil(displayCards.length / perPage);
+    const paginatedCards = useMemo(() => {
+        const start = (currentPage - 1) * perPage;
+        return displayCards.slice(start, start + perPage);
+    }, [displayCards, currentPage, perPage]);
+
+    // Reset to page 1 when set or view mode changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [set.id, viewMode, showFullArts]);
 
     if (showPrintView) {
         return (
@@ -448,10 +460,10 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
 
             <BinderCalculator totalCards={displayCards.length} />
 
-            {/* Standard Reverse Holo Set Info Banner */}
+            {/* Standard Reverse Holo Set Information Banner */}
             {!isCustomSet && canHaveMasterSet && viewMode === 'master' && (
                 <div className="mb-6 mx-auto">
-                    <div className="p-4 rounded-xl bg-slate-800/50 border border-border-slate-700/50 flex items-start gap-3">
+                    <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 flex items-start gap-3">
                         <Info className="w-5 h-5 text-pokemon-blue mt-0.5" />
                         <div>
                             <p className="text-white font-bold text-sm mb-1">Master Set Information</p>
@@ -474,7 +486,6 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                 </div>
             )}
 
-
             {error ? (
                 <div className="p-8 rounded-2xl bg-red-500/10 border border-red-500/20 text-center text-red-400">
                     {error}
@@ -494,10 +505,8 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                         </div>
                     )}
 
-
-
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-                        {displayCards.map((card, index) => (
+                        {paginatedCards.map((card, index) => (
                             <GridCard
                                 key={`${currentSet.id}-${card.id}-${index}-${card.variation || 'default'}`}
                                 card={card}
@@ -516,6 +525,32 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                             />
                         ))}
                     </div>
+
+                    {/* Pagination for Cards */}
+                    {totalPages > 1 && (
+                        <div className="mt-8 flex justify-center items-center gap-4">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
+
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-white">Page {currentPage}</span>
+                                <span className="text-sm text-slate-500">of {totalPages}</span>
+                            </div>
+
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            >
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -621,6 +656,7 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                 existingVariations={isCustomSet && previewCard ?
                     cards.filter(c => c.number === previewCard.number).map(c => c.variation || 'Normal')
                     : []}
+                showEnglishNames={showEnglishNames}
             />
 
             {isCustomSet && (
@@ -643,7 +679,7 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
-                            className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-sm w-full shadow-2xl"
+                            className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
                         >
                             <div className="text-center">
                                 <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
@@ -760,122 +796,65 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                                 <p className="text-slate-400">Choose how to create your custom set from <span className="text-white font-medium">{currentSet.name}</span></p>
                             </div>
 
-                            {/* Selection Options */}
-                            <div className="space-y-3 mb-6">
-                                {/* Standard Set Option */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                                 <button
                                     onClick={() => setCreateMode('standard')}
-                                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${createMode === 'standard'
-                                        ? 'border-pokemon-blue bg-pokemon-blue/10'
-                                        : 'border-white/10 hover:border-white/20 bg-white/5'
+                                    className={`p-4 rounded-2xl border-2 text-left transition-all ${createMode === 'standard'
+                                        ? 'bg-pokemon-blue/10 border-pokemon-blue shadow-lg shadow-pokemon-blue/10'
+                                        : 'bg-white/5 border-white/5 hover:border-white/10'
                                         }`}
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <div className="font-semibold text-white">Standard Set</div>
-                                            <div className="text-sm text-slate-400">{cards.length} base cards only</div>
-                                        </div>
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${createMode === 'standard' ? 'border-pokemon-blue bg-pokemon-blue' : 'border-slate-500'
-                                            }`}>
-                                            {createMode === 'standard' && <div className="w-2 h-2 rounded-full bg-white" />}
-                                        </div>
+                                    <div className={`w-10 h-10 rounded-xl mb-3 flex items-center justify-center ${createMode === 'standard' ? 'bg-pokemon-blue text-white' : 'bg-slate-800 text-slate-400'}`}>
+                                        <Copy className="w-5 h-5" />
                                     </div>
+                                    <h4 className={`font-bold mb-1 ${createMode === 'standard' ? 'text-white' : 'text-slate-300'}`}>Standard Set</h4>
+                                    <p className="text-xs text-slate-500">Copy only the base cards from this set ({cards.length} cards).</p>
                                 </button>
 
-                                {/* Master Set Option - only for 2002+ sets */}
-                                {canHaveMasterSet && (
-                                    <button
-                                        onClick={() => setCreateMode('master')}
-                                        className={`w-full p-4 rounded-xl border-2 text-left transition-all ${createMode === 'master'
-                                            ? 'border-pokemon-purple bg-pokemon-purple/10'
-                                            : 'border-white/10 hover:border-white/20 bg-white/5'
-                                            }`}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <div className="font-semibold text-white">
-                                                    {isSpecialSet ? 'Master Set (All Variants)' : 'Master Set (Reverse Holo)'}
-                                                </div>
-                                                <div className="text-sm text-slate-400">
-                                                    {masterSetCards.length} cards including variants
-                                                </div>
-                                            </div>
-                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${createMode === 'master' ? 'border-pokemon-purple bg-pokemon-purple' : 'border-slate-500'
-                                                }`}>
-                                                {createMode === 'master' && <div className="w-2 h-2 rounded-full bg-white" />}
-                                            </div>
-                                        </div>
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* Disclaimer for Master Set */}
-                            {createMode === 'master' && canHaveMasterSet && (
-                                <div className="mb-6 px-4">
-                                    <div className="flex gap-3">
-                                        <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                                        <div className="text-sm">
-                                            <p className="text-amber-200 font-bold mb-1">Master Set Accuracy</p>
-                                            <p className="text-slate-300 mb-2 font-medium leading-relaxed">
-                                                This master set is auto-generated and may not be 100% accurate. Please be cautious and verify all variants against official sources before printing.
-                                            </p>
-                                            <p className="text-slate-500 text-xs">
-                                                {isSpecialSet
-                                                    ? "Includes Reverse Holo, Poké Ball Holo, and Master Ball Holo variants."
-                                                    : "Includes Reverse Holo variants for most Pokémon and Trainer cards."
-                                                }
-                                            </p>
-                                        </div>
+                                <button
+                                    disabled={!canHaveMasterSet}
+                                    onClick={() => setCreateMode('master')}
+                                    className={`p-4 rounded-2xl border-2 text-left transition-all ${!canHaveMasterSet ? 'opacity-50 cursor-not-allowed' : ''} ${createMode === 'master'
+                                        ? 'bg-pokemon-purple/10 border-pokemon-purple shadow-lg shadow-pokemon-purple/10'
+                                        : 'bg-white/5 border-white/5 hover:border-white/10'
+                                        }`}
+                                >
+                                    <div className={`w-10 h-10 rounded-xl mb-3 flex items-center justify-center ${createMode === 'master' ? 'bg-pokemon-purple text-white' : 'bg-slate-800 text-slate-400'}`}>
+                                        <Printer className="w-5 h-5" />
                                     </div>
-                                </div>
-                            )}
+                                    <h4 className={`font-bold mb-1 ${createMode === 'master' ? 'text-white' : 'text-slate-300'}`}>Master Set Template</h4>
+                                    <p className="text-xs text-slate-500">Includes all Reverse Holo variants ({masterSetCards.length} cards).</p>
+                                </button>
+                            </div>
 
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => {
-                                        setShowCreateConfirm(false);
-                                        setCreateMode('standard');
-                                    }}
-                                    className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold transition-all"
+                                    onClick={() => setShowCreateConfirm(false)}
+                                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold transition-all"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={() => {
-                                        const suffix = createMode === 'master' ? 'Master Set' : 'Custom';
-                                        const customSet = createCustomSet(`${currentSet.name} (${suffix})`, currentSet.series);
-
-                                        // Copy cards based on selected mode
-                                        const cardsToAdd = createMode === 'master' ? masterSetCards : cards;
-
-                                        // Use bulk addition for better performance
-                                        addCustomCardsBulk(
-                                            customSet.id,
-                                            cardsToAdd.map(card => ({
-                                                name: card.name,
-                                                number: card.number,
-                                                rarity: card.rarity || 'Common',
-                                                imageUrl: card.images.small,
-                                                sourceCard: card,
-                                                variation: card.variation
-                                            }))
+                                        const newSet = createCustomSet(
+                                            `${currentSet.name}${createMode === 'master' ? ' Master' : ''}`,
+                                            currentSet.series,
+                                            currentSet.images.logo
                                         );
 
-                                        refreshCustomSets();
+                                        const cardsToUse = createMode === 'master' ? masterSetCards : cards;
+                                        addCustomCardsBulk(newSet.id, cardsToUse);
+
+                                        setCreatedCustomSet(newSet);
                                         setShowCreateConfirm(false);
-                                        setCreateMode('standard');
-                                        setCreatedCustomSet({
-                                            ...customSet,
-                                            total: cardsToAdd.length,
-                                            isCustom: true
-                                        });
+                                        refreshCustomSets();
                                     }}
-                                    className={`flex-1 px-4 py-2.5 rounded-xl font-semibold transition-all ${createMode === 'master'
-                                        ? 'bg-pokemon-purple hover:bg-pokemon-purple/80 text-white'
-                                        : 'bg-pokemon-blue hover:bg-pokemon-blue/80 text-white'
+                                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-white transition-all shadow-lg ${createMode === 'standard'
+                                        ? 'bg-pokemon-blue hover:bg-pokemon-blue/90 shadow-pokemon-blue/20'
+                                        : 'bg-pokemon-purple hover:bg-pokemon-purple/90 shadow-pokemon-purple/20'
                                         }`}
                                 >
-                                    Create {createMode === 'master' ? 'Master Set' : 'Custom Set'}
+                                    Create Set
                                 </button>
                             </div>
                         </motion.div>
@@ -883,27 +862,22 @@ const SetDetail: React.FC<SetDetailProps> = ({ set, onBack, onNavigateToSet }) =
                 )}
             </AnimatePresence>
 
-            {/* Custom Set Created Success Modal */}
+            {/* Success Modal */}
             <SuccessModal
                 isOpen={!!createdCustomSet}
                 onClose={() => setCreatedCustomSet(null)}
                 title="Custom Set Created!"
-                subtitle={createdCustomSet?.name}
-                description={`${createdCustomSet?.total || 0} cards copied. You can now add variant cards (Reverse Holo, Poke Ball Holo, Master Ball Holo) to track your complete collection.`}
-                accentColor="green"
-                secondaryAction={{
-                    label: "Stay Here",
-                    onClick: () => setCreatedCustomSet(null),
-                }}
+                description={`Your new custom set "${createdCustomSet?.name}" has been created successfully with all cards from the template.`}
                 primaryAction={{
-                    label: "Go to Custom Set",
+                    label: "Go to Set",
                     onClick: () => {
-                        if (onNavigateToSet && createdCustomSet) {
+                        if (createdCustomSet && onNavigateToSet) {
                             onNavigateToSet(createdCustomSet);
                         }
                         setCreatedCustomSet(null);
-                    },
+                    }
                 }}
+                accentColor={createMode === 'master' ? 'purple' : 'blue'}
             />
 
             {/* Share Set Modal */}

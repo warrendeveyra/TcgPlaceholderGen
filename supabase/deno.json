@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "lib": [
+            "deno.window",
+            "dom"
+        ],
+        "strict": false
+    },
+    "importMap": "import_map.json"
+}

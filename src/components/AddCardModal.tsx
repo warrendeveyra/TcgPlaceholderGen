@@ -32,7 +32,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
     const [variationPickerCard, setVariationPickerCard] = useState<PokemonCard | null>(null);
     const [fetchingCardDetails, setFetchingCardDetails] = useState(false);
 
-    const { sets: officialSets } = useSetContext();
+    const { sets: officialSets, showEnglishNames } = useSetContext();
 
     // Sort sets by release date (newest first) for display and selection
     const sortedSets = useMemo(() => {
@@ -97,7 +97,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
                 for (const sid of setsToSearch) {
                     try {
                         const response = await pokemonTcgApi.getCardsBySet(sid);
-                        const matches = response.data.filter(card =>
+                        const matches = response.data.filter((card: PokemonCard) =>
                             card.name.toLowerCase().includes(query.toLowerCase())
                         );
                         allCards.push(...matches);
@@ -111,7 +111,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
                     const cards = await pokemonTcgApi.getCardsByArtist(query);
                     // Filter to only include cards from our official physical sets
                     const officialSetIds = new Set(officialSets.map(s => s.id));
-                    const filteredCards = cards.filter(card => {
+                    const filteredCards = cards.filter((card: PokemonCard) => {
                         const sid = card.set?.id;
                         if (!sid) return false;
                         return officialSetIds.has(sid);
@@ -608,6 +608,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, setId, onC
                         ? Array.from({ length: getCardQuantity(previewCard.id) }).map(() => 'Normal')
                         : []
                 }
+                showEnglishNames={showEnglishNames}
             />
         </div>
     );

@@ -1,19 +1,34 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vitejs.dev/config/
-export default defineConfig({
-    base: '/TcgPlaceholderGen/',
+export default defineConfig(({ command }) => ({
+    base: command === 'serve' ? '/' : '/TcgPlaceholderGen/',
     plugins: [
         react(),
     ],
+    resolve: {
+        alias: {
+            'react': path.resolve(__dirname, 'node_modules/react'),
+            'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+        },
+    },
     server: {
+        host: '127.0.0.1',
+        port: 5173,
+        strictPort: true,
         hmr: {
-            // Fix WebSocket connection when using base path in dev mode
-            path: '/ws',
+            protocol: 'ws',
+            host: '127.0.0.1',
+            port: 5173,
         },
     },
     build: {
+        
         rollupOptions: {
             output: {
                 manualChunks: {
@@ -25,5 +40,6 @@ export default defineConfig({
                 },
             },
         },
+        
     },
-})
+}))

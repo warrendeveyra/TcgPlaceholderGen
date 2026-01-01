@@ -1,4 +1,4 @@
-# TCG Master Set Gen 🎴
+# TCG Master Set Gen 🃏�
 
 > Complete your binder organization with Placeholder generation and  AI-powered binder recommendations.
 
@@ -17,10 +17,11 @@ A web app for Pokémon TCG collectors to generate placeholder cards for missing 
 ## ✨ Features
 
 - 📚 **Browse Official Sets** — Access all Pokémon TCG sets via the official API
+- 🌐 **Multi-Language Support** — Full Japanese support with localized set names and card data
 - 🎨 **Custom Sets** — Create and manage your own custom card collections
-- 🤖 **AI Binder Recommendations** — Get expert advice on the best binders for your collection using Google Gemini AI
+- ✨ **AI Binder Recommendations** — Get expert advice on the best binders for your collection using Google Gemini AI
 - 📱 **PWA Support** — Install as an app on mobile or desktop
-- 🖨️ **Print Ready** — Export placeholders for printing
+- 📄 **Print Ready** — Export placeholders for printing
 - 🌙 **Dark Mode** — Premium dark UI designed for long sessions
 
 ## 🚀 Live Demo
@@ -30,10 +31,10 @@ A web app for Pokémon TCG collectors to generate placeholder cards for missing 
 ## 🛠️ Tech Stack
 
 - **React 18** + TypeScript
-- **Vite** — Lightning fast builds
+- **Vite** — Lightning fast builds with optimized chunking
 - **Tailwind CSS** — Utility-first styling
 - **Framer Motion** — Smooth animations
-- **Pokémon TCG API** — Card data
+- **Pokémon TCG API** — Card data via Hybrid REST/GraphQL
 - **Google Gemini AI** — Binder brand recommendations
 
 ## 📦 Installation
@@ -76,11 +77,11 @@ Planned features for future releases:
 
 | TCG | Languages | Status |
 | :--- | :--- | :--- |
-| **Pokémon TCG** | 🇯🇵 Japanese | 🏗️ Ongoing |
-| **Pokémon TCG** | 🇰🇷 Korean | 🔜 Planned |
-| **Pokémon TCG** | 🇨🇳 Chinese | 🔜 Planned |
-| **Yu-Gi-Oh! TCG** | 🇺🇸 English / 🇯🇵 Japanese | 🔜 Planned |
-| **One Piece TCG** | 🇺🇸 English / 🇯🇵 Japanese | 🔜 Planned |
+| **Pokémon TCG** | 🎌 Japanese | ✅ Completed |
+| **Pokémon TCG** | KR Korean | 🔜 Planned |
+| **Pokémon TCG** | CN Chinese | 🔜 Planned |
+| **Yu-Gi-Oh! TCG** | US English / 🎌 Japanese | 🔜 Planned |
+| **One Piece TCG** | US English / 🎌 Japanese | 🔜 Planned |
 
 Have a feature request? [Open an issue](https://github.com/warrendeveyra/TcgPlaceholderGen/issues)!
 

@@ -1,20 +1,39 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSetContext } from '../context/SetContext';
 import SetCard from './SetCard';
 import CustomDropdown from './CustomDropdown';
 import { Loader2, ArrowUpDown, Search, Calendar, Grid3X3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { translateSearchQuery } from '../services/translationService';
 
 const SetGrid: React.FC = () => {
-    const { sets, loading, error, setSelectedSet } = useSetContext();
+    const { sets, loading, translating, error, setSelectedSet, language, showEnglishNames } = useSetContext();
 
-    // Filter state
     const [searchQuery, setSearchQuery] = useState('');
+    const [translatedQuery, setTranslatedQuery] = useState('');
     const [perPage, setPerPage] = useState<number>(24);
     const [currentPage, setCurrentPage] = useState(1);
     const [yearFrom, setYearFrom] = useState<number>(1999);
     const [yearTo, setYearTo] = useState<number>(new Date().getFullYear());
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+
+    // Auto-translate English search query to Japanese when language is ja and translation is OFF
+    useEffect(() => {
+        const translateQuery = async () => {
+            if (searchQuery.trim() && language === 'ja' && !showEnglishNames) {
+                // Translate English query to Japanese to match original data
+                const translated = await translateSearchQuery(searchQuery, 'ja');
+                setTranslatedQuery(translated);
+            } else {
+                setTranslatedQuery('');
+            }
+        };
+
+        // Debounce translation
+        const timer = setTimeout(translateQuery, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery, language, showEnglishNames]);
+
 
     // Get unique years from sets for dropdown options
     const availableYears = useMemo(() => {
@@ -29,13 +48,37 @@ const SetGrid: React.FC = () => {
     const filteredSets = useMemo(() => {
         let result = [...sets];
 
-        // Search filter
+        // Search filter - use both original query and translated query
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
-            result = result.filter(set =>
-                set.name.toLowerCase().includes(q) ||
-                set.series.toLowerCase().includes(q)
-            );
+            const tq = translatedQuery.toLowerCase();
+            result = result.filter(set => {
+                const name = set.name.toLowerCase();
+                const series = set.series.toLowerCase();
+                const id = set.id.toLowerCase();
+                const originalName = (set.originalName || '').toLowerCase();
+                const originalSeries = (set.originalSeries || '').toLowerCase();
+                const nameEn = (set.nameEn || '').toLowerCase();
+
+                // Match against original query
+                const matchesOriginal =
+                    name.includes(q) ||
+                    series.includes(q) ||
+                    id.includes(q) ||
+                    originalName.includes(q) ||
+                    originalSeries.includes(q) ||
+                    nameEn.includes(q);
+
+                // Match against translated query (if available)
+                const matchesTranslated = tq && (
+                    name.includes(tq) ||
+                    series.includes(tq) ||
+                    originalName.includes(tq) ||
+                    originalSeries.includes(tq)
+                );
+
+                return matchesOriginal || matchesTranslated;
+            });
         }
 
         // Filter by year range
@@ -124,19 +167,23 @@ const SetGrid: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="relative z-50 mb-6 p-4 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50"
             >
+                {/* Translating indicator */}
+                {translating && (
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-pokemon-blue via-pokemon-yellow to-pokemon-blue animate-shimmer" />
+                )}
                 <div className="flex flex-wrap gap-3 items-center">
                     {/* Search */}
-                    <div className="relative flex-grow min-w-[200px] max-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <div className="relative flex-grow min-w-[240px] max-w-[450px]">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-pokemon-yellow transition-colors" />
                         <label htmlFor="set-grid-search" className="sr-only">Search sets</label>
                         <input
                             id="set-grid-search"
                             name="set-grid-search"
                             type="text"
-                            placeholder="Search sets..."
+                            placeholder="Search official sets..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-slate-700/50 border border-slate-600 text-white text-sm rounded-lg pl-9 pr-3 py-2 focus:ring-2 focus:ring-pokemon-yellow/50 focus:border-pokemon-yellow placeholder-slate-500"
+                            className="w-full bg-slate-700/50 border border-slate-600 text-white text-sm rounded-xl pl-9 pr-3 py-2.5 focus:ring-2 focus:ring-pokemon-yellow/50 focus:border-pokemon-yellow transition-all placeholder-slate-500"
                         />
                     </div>
 

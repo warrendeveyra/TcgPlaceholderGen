@@ -56,7 +56,10 @@ export interface TcgdexCard {
 export interface PokemonSet {
     id: string;
     name: string;
+    nameEn?: string;
     series: string;
+    originalName?: string;
+    originalSeries?: string;
     printedTotal: number;
     total: number;
     releaseDate: string;
@@ -118,7 +121,7 @@ export interface PokemonCard {
     };
 }
 
-export interface ApiResponse<T> {
+export interface TcgApiResponse<T> {
     data: T;
     page: number;
     pageSize: number;

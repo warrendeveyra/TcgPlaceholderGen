@@ -39,7 +39,7 @@ export const saveCustomSets = (sets: CustomSet[]): void => {
 };
 
 // Create a new custom set
-export const createCustomSet = (name: string, series: string): CustomSet => {
+export const createCustomSet = (name: string, series: string, logo?: string): CustomSet => {
     const id = generateUniqueId('set');
     const newSet: CustomSet = {
         id,
@@ -51,7 +51,7 @@ export const createCustomSet = (name: string, series: string): CustomSet => {
         updatedAt: new Date().toISOString(),
         images: {
             symbol: '',
-            logo: '',
+            logo: logo || '',
         },
         isCustom: true,
         createdAt: new Date().toISOString(),

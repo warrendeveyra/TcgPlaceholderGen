@@ -39,9 +39,28 @@
     }, true);
 
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js');
-      });
+      if (window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1')) {
+        // Force unregister any existing service worker on localhost
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (let registration of registrations) {
+            registration.unregister().then(() => {
+              console.log('Successfully unregistered stale service worker on localhost');
+            }).catch(err => {
+              console.warn('Failed to unregister service worker (likely already removed):', err);
+            });
+          }
+        });
+      } else {
+        // Normal registration for production (GitHub Pages)
+        window.addEventListener('load', () => {
+          const swPath = window.location.pathname.includes('/TcgPlaceholderGen/')
+            ? '/TcgPlaceholderGen/sw.js'
+            : '/sw.js';
+          navigator.serviceWorker.register(swPath).catch(err => {
+            console.error('ServiceWorker registration failed: ', err);
+          });
+        });
+      }
     }
   </script>
 </body>

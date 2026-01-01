@@ -16,7 +16,8 @@ logs/
 npm-debug.log*
 
 # Editor & IDE
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo
@@ -33,4 +34,5 @@ Thumbs.db
 .vite/
 
 # Supabase
-supabase
+supabase/.temp/
+supabase/.temp

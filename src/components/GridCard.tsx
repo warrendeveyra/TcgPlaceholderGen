@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
 import { PokemonCard } from '../types/pokemon';
+import { sharedObserver } from '../utils/observer';
 
 interface GridCardProps {
     card: PokemonCard;
@@ -26,25 +27,21 @@ const GridCard: React.FC<GridCardProps> = ({
     const cardRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    setIsVisible(true);
-                }
-            },
-            {
-                rootMargin: '200px', // Start loading before it enters viewport
-                threshold: 0.01
-            }
-        );
-
         if (cardRef.current) {
-            observer.observe(cardRef.current);
+            sharedObserver.observe(cardRef.current, (isIntersecting) => {
+                if (isIntersecting) {
+                    setIsVisible(true);
+                    // Once visible, we can stop observing to save resources
+                    if (cardRef.current) {
+                        sharedObserver.unobserve(cardRef.current);
+                    }
+                }
+            });
         }
 
         return () => {
             if (cardRef.current) {
-                observer.unobserve(cardRef.current);
+                sharedObserver.unobserve(cardRef.current);
             }
         };
     }, []);

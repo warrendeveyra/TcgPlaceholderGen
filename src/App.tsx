@@ -8,14 +8,15 @@ import ImportSetModal from './components/ImportSetModal';
 import SuccessModal from './components/SuccessModal';
 import { deleteCustomSet, CustomSet, createCustomSet, getCustomCards, saveCustomCards, updateSetCardCounts } from './services/customSets';
 import { getShareCodeFromUrl, getSharedSet, clearShareCodeFromUrl, SharedSetData } from './services/shareService';
-import { Search, Sparkles, Settings, FolderPlus, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Sparkles, Settings, FolderPlus, Trash2, AlertTriangle, RefreshCw, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function MainContent() {
-    const { selectedSet, setSelectedSet, searchTerm, setSearchTerm, customSets, refreshCustomSets } = useSetContext();
+    const { selectedSet, setSelectedSet, customSets, refreshCustomSets, language, setLanguage, showEnglishNames, setShowEnglishNames } = useSetContext();
     const [showSettings, setShowSettings] = useState(false);
     const [showCreateSet, setShowCreateSet] = useState(false);
     const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY') || '');
+
     const [setToDelete, setSetToDelete] = useState<CustomSet | null>(null);
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -27,6 +28,7 @@ function MainContent() {
     const [isImporting, setIsImporting] = useState(false);
     const [shareError, setShareError] = useState<string | null>(null);
     const [showUpdateToast, setShowUpdateToast] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
 
     // Listen for PWA install prompt
     useEffect(() => {
@@ -64,6 +66,8 @@ function MainContent() {
                     }
                 });
             });
+        }).catch(err => {
+            console.warn('Service worker ready check failed:', err);
         });
 
         return () => {
@@ -83,23 +87,37 @@ function MainContent() {
 
     const saveApiKey = () => {
         localStorage.setItem('GEMINI_API_KEY', apiKey);
-        setShowSettings(false);
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 3000); // Feedback for 3s
     };
+
+    // Reset API key state when opening settings to ensure consistency with Storage
+    useEffect(() => {
+        if (showSettings) {
+            setApiKey(localStorage.getItem('GEMINI_API_KEY') || '');
+            setIsSaved(false);
+        }
+    }, [showSettings]);
 
     // Check URL for share code on mount
     useEffect(() => {
         const checkShareCode = async () => {
-            const shareCode = getShareCodeFromUrl();
-            if (shareCode) {
-                const result = await getSharedSet(shareCode);
-                if (result.success && result.data) {
-                    setSharedSetData(result.data);
-                    setShowImportModal(true);
-                } else if (result.error) {
-                    // Show styled error modal for expired/invalid links
-                    setShareError(result.error);
-                    clearShareCodeFromUrl();
+            try {
+                const shareCode = getShareCodeFromUrl();
+                if (shareCode) {
+                    const result = await getSharedSet(shareCode);
+                    if (result.success && result.data) {
+                        setSharedSetData(result.data);
+                        setShowImportModal(true);
+                    } else if (result.error) {
+                        // Show styled error modal for expired/invalid links
+                        setShareError(result.error);
+                        clearShareCodeFromUrl();
+                    }
                 }
+            } catch (err) {
+                console.error('Error in share code routine:', err);
+                clearShareCodeFromUrl(); // Safety clear
             }
         };
         checkShareCode();
@@ -171,7 +189,7 @@ function MainContent() {
                         transition={{ delay: 0.2 }}
                         className="text-slate-400 mt-2 text-lg font-medium italic max-w-2xl mx-auto"
                     >
-                        Complete your binder organization <br />Built for collectors by a collector
+                        Built for collectors by a collector
                     </motion.p>
 
                     {!selectedSet && (
@@ -179,33 +197,21 @@ function MainContent() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
-                            className="mt-8 flex items-center justify-center gap-3"
+                            className="mt-8 flex items-center justify-center gap-4"
                         >
-                            <div className="relative group">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-pokemon-blue transition-colors" />
-                                <label htmlFor="set-search" className="sr-only">Search sets</label>
-                                <input
-                                    id="set-search"
-                                    name="set-search"
-                                    type="text"
-                                    placeholder="Search sets..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-pokemon-blue/50 focus:border-pokemon-blue/30 outline-none transition-all w-64 text-sm font-medium"
-                                />
-                            </div>
                             <button
                                 onClick={() => setShowCreateSet(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-pokemon-blue/20 border border-pokemon-blue/30 hover:bg-pokemon-blue/30 transition-all text-pokemon-blue font-medium text-sm"
+                                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-pokemon-blue/20 border border-pokemon-blue/30 hover:bg-pokemon-blue/30 hover:shadow-lg hover:shadow-pokemon-blue/10 transition-all text-pokemon-blue font-bold text-base"
                             >
-                                <FolderPlus className="w-4 h-4" />
-                                <span className="hidden sm:inline">Create Set</span>
+                                <FolderPlus className="w-5 h-5" />
+                                <span>Create Custom Set</span>
                             </button>
                             <button
                                 onClick={() => setShowSettings(true)}
-                                className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
+                                className="p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-slate-400 hover:text-white"
+                                title="Settings"
                             >
-                                <Settings className="w-5 h-5" />
+                                <Settings className="w-6 h-6" />
                             </button>
                         </motion.div>
                     )}
@@ -416,33 +422,141 @@ function MainContent() {
                                     >
                                         Gemini API Key
                                     </label>
-                                    <input
-                                        id="gemini-api-key"
-                                        name="gemini-api-key"
-                                        type="password"
-                                        value={apiKey}
-                                        onChange={(e) => setApiKey(e.target.value)}
-                                        placeholder="Paste your API key here..."
-                                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-pokemon-blue/50 outline-none transition-all text-sm text-white"
-                                    />
+                                    <div className="relative group">
+                                        <input
+                                            id="gemini-api-key"
+                                            name="gemini-api-key"
+                                            type="password"
+                                            value={apiKey}
+                                            onChange={(e) => setApiKey(e.target.value)}
+                                            placeholder="Paste your API key here..."
+                                            className="w-full pl-4 pr-16 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-pokemon-blue/50 outline-none transition-all text-sm text-white"
+                                        />
+                                        <div className="absolute right-1.5 top-1.5 flex gap-1">
+                                            <AnimatePresence mode="wait">
+                                                {isSaved ? (
+                                                    <motion.div
+                                                        key="saved"
+                                                        initial={{ opacity: 0, scale: 0.5 }}
+                                                        animate={{ opacity: 1, scale: 1 }}
+                                                        exit={{ opacity: 0, scale: 0.5 }}
+                                                        className="px-3 py-1.5 bg-green-500/20 text-green-500 rounded-lg flex items-center gap-1.5"
+                                                    >
+                                                        <Check className="w-3.5 h-3.5" />
+                                                        <span className="text-[10px] font-bold uppercase tracking-tight">Saved</span>
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.button
+                                                        key="save"
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        exit={{ opacity: 0 }}
+                                                        onClick={saveApiKey}
+                                                        disabled={!apiKey || apiKey === localStorage.getItem('GEMINI_API_KEY')}
+                                                        className="px-3 py-1.5 bg-pokemon-blue hover:bg-pokemon-blue/90 disabled:opacity-0 disabled:pointer-events-none text-white text-[10px] font-bold uppercase tracking-tight rounded-lg transition-all shadow-lg shadow-pokemon-blue/20"
+                                                    >
+                                                        Save
+                                                    </motion.button>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    </div>
                                     <p className="mt-2 text-[10px] text-slate-500">
                                         Your key is saved locally in your browser. Get one for free at <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" className="text-pokemon-blue hover:underline">Google AI Studio</a>.
                                     </p>
                                 </div>
+
+                                <div className="pt-4 border-t border-white/5">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                        Language Support
+                                    </label>
+                                    <div className="relative p-1 bg-white/5 border border-white/10 rounded-2xl flex items-center">
+                                        {/* Sliding Highlighter */}
+                                        <motion.div
+                                            className="absolute h-[calc(100%-8px)] rounded-xl bg-gradient-to-r from-pokemon-blue to-pokemon-blue/80 shadow-lg shadow-pokemon-blue/20"
+                                            initial={false}
+                                            animate={{
+                                                width: 'calc(50% - 4px)',
+                                                x: language === 'en' ? 0 : 'calc(100% + 4px)',
+                                                background: language === 'en'
+                                                    ? 'linear-gradient(to right, #3b82f6, #60a5fa)'
+                                                    : 'linear-gradient(to right, #ef4444, #f87171)'
+                                            }}
+                                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                        />
+
+                                        <button
+                                            onClick={() => setLanguage('en')}
+                                            className={`relative flex-1 flex items-center justify-center gap-3 px-4 py-3 z-10 transition-colors duration-300 ${language === 'en' ? 'text-white' : 'text-slate-400 hover:text-slate-300'}`}
+                                        >
+                                            <div className="w-5 h-3.5 overflow-hidden rounded-sm shadow-sm flex-shrink-0">
+                                                <img
+                                                    src="https://flagcdn.com/w40/us.png"
+                                                    srcSet="https://flagcdn.com/w80/us.png 2x"
+                                                    alt="English"
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                            <span className="font-bold text-sm">English</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setLanguage('ja')}
+                                            className={`relative flex-1 flex items-center justify-center gap-3 px-4 py-3 z-10 transition-colors duration-300 ${language === 'ja' ? 'text-white' : 'text-slate-400 hover:text-slate-300'}`}
+                                        >
+                                            <div className="w-5 h-3.5 overflow-hidden rounded-sm shadow-sm flex-shrink-0">
+                                                <img
+                                                    src="https://flagcdn.com/w40/jp.png"
+                                                    srcSet="https://flagcdn.com/w80/jp.png 2x"
+                                                    alt="Japanese"
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                            <span className="font-bold text-sm">Japanese</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <AnimatePresence>
+                                    {language === 'ja' && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                                            animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
+                                            exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                            className="pt-4 border-t border-white/5 overflow-hidden"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                                        Auto-Translate Japanese
+                                                    </label>
+                                                    <p className="text-[10px] text-slate-500 mt-1">
+                                                        Translate Japanese cards & set names to English
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowEnglishNames(!showEnglishNames)}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pokemon-blue/50 ${showEnglishNames ? 'bg-pokemon-blue' : 'bg-white/10'
+                                                        }`}
+                                                >
+                                                    <span
+                                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showEnglishNames ? 'translate-x-6' : 'translate-x-1'
+                                                            }`}
+                                                    />
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
 
-                            <div className="flex gap-3 mt-8">
+                            <div className="mt-8">
                                 <button
                                     onClick={() => setShowSettings(false)}
-                                    className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-semibold transition-colors"
+                                    className="w-full px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold transition-all shadow-lg active:scale-[0.98]"
                                 >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={saveApiKey}
-                                    className="flex-1 px-4 py-2.5 rounded-xl bg-pokemon-blue hover:bg-pokemon-blue/90 text-white font-semibold shadow-lg shadow-pokemon-blue/20 transition-all"
-                                >
-                                    Save Changes
+                                    Done
                                 </button>
                             </div>
                         </motion.div>

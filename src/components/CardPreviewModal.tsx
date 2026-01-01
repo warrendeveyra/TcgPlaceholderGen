@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Loader2, Minus } from 'lucide-react';
+import { X, Plus, Loader2, Minus, Languages } from 'lucide-react';
 import { PokemonCard } from '../types/pokemon';
 import CardImage from './CardImage';
 import { addCustomCard } from '../services/customSets';
 import { pokemonTcgApi } from '../services/pokemonTcgApi';
 import VariationPicker from './VariationPicker';
 import { getSetVariants } from '../utils/variantOverrides';
+import { translateText } from '../services/translationService';
 
 interface CardPreviewModalProps {
     card: PokemonCard | null;
@@ -19,6 +20,7 @@ interface CardPreviewModalProps {
     onVariantAdded?: () => void;
     onRemove?: (card: PokemonCard) => void;
     existingVariations?: string[]; // Variations already in the custom set for this card number
+    showEnglishNames?: boolean;
 }
 
 const CardPreviewModal: React.FC<CardPreviewModalProps> = ({
@@ -29,11 +31,54 @@ const CardPreviewModal: React.FC<CardPreviewModalProps> = ({
     customSetId,
     onVariantAdded,
     onRemove,
-    existingVariations = []
+    existingVariations = [],
+    showEnglishNames = false
 }) => {
     const [showVariantPicker, setShowVariantPicker] = useState(false);
     const [fullCardData, setFullCardData] = useState<PokemonCard | null>(null);
     const [loadingCardData, setLoadingCardData] = useState(false);
+    const [translatedData, setTranslatedData] = useState<{
+        name?: string;
+        rarity?: string;
+        variation?: string;
+    }>({});
+    const [translating, setTranslating] = useState(false);
+
+    // Translate card details only when modal opens and toggle is on
+    useEffect(() => {
+        const translate = async () => {
+            if (isOpen && card && showEnglishNames) {
+                // Heuristic: only translate if it looks Japanese
+                const hasCJK = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(card.name);
+                if (!hasCJK) {
+                    setTranslatedData({});
+                    return;
+                }
+
+                setTranslating(true);
+                try {
+                    const [enName, enRarity, enVar] = await Promise.all([
+                        translateText(card.name),
+                        card.rarity ? translateText(card.rarity) : Promise.resolve(undefined),
+                        card.variation ? translateText(card.variation) : Promise.resolve(undefined)
+                    ]);
+                    setTranslatedData({
+                        name: enName,
+                        rarity: enRarity,
+                        variation: enVar
+                    });
+                } catch (err) {
+                    console.error('Individual translation failed:', err);
+                } finally {
+                    setTranslating(false);
+                }
+            } else {
+                setTranslatedData({});
+            }
+        };
+
+        translate();
+    }, [isOpen, card?.id, showEnglishNames]);
 
     // Reset state when card changes
     useEffect(() => {
@@ -236,21 +281,31 @@ const CardPreviewModal: React.FC<CardPreviewModalProps> = ({
 
                     {/* Card Info */}
                     <div className="mt-4 text-center">
-                        <h3 className="text-xl font-bold text-white">{card.name}</h3>
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                            {translating && <Loader2 className="w-3 h-3 animate-spin text-pokemon-blue" />}
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                {translatedData.name || card.name}
+                                {translatedData.name && (
+                                    <span className="text-[10px] text-pokemon-blue/70">
+                                        <Languages className="w-3 h-3" />
+                                    </span>
+                                )}
+                            </h3>
+                        </div>
 
                         {/* Card details */}
                         <div className="flex items-center justify-center gap-3 mt-2 text-sm text-slate-400">
                             <span>#{card.number}</span>
-                            {card.rarity && (
+                            {(translatedData.rarity || card.rarity) && (
                                 <>
                                     <span className="w-1 h-1 rounded-full bg-slate-600" />
-                                    <span>{card.rarity}</span>
+                                    <span>{translatedData.rarity || card.rarity}</span>
                                 </>
                             )}
-                            {card.variation && (
+                            {(translatedData.variation || card.variation) && (
                                 <>
                                     <span className="w-1 h-1 rounded-full bg-slate-600" />
-                                    <span className="text-pokemon-purple">{card.variation}</span>
+                                    <span className="text-pokemon-purple">{translatedData.variation || card.variation}</span>
                                 </>
                             )}
                         </div>
