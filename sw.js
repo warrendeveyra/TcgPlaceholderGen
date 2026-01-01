@@ -56,6 +56,11 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(event.request.url);
 
+    // 1. Bypass all caching for development
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+        return; // Let the browser handle the fetch normally
+    }
+
     // Network-first for HTML pages (always get latest)
     if (event.request.mode === 'navigate' ||
         event.request.destination === 'document' ||

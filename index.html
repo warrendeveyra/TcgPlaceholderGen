@@ -17,13 +17,13 @@
   <title>TCG Master Set Placeholder Generator</title>
   <meta name="description" content="Generate printable placeholders for TCG master sets" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <script type="module" crossorigin src="/TcgPlaceholderGen/assets/index-Duh4ClHe.js"></script>
+  <script type="module" crossorigin src="/TcgPlaceholderGen/assets/index-CEsjBc47.js"></script>
   <link rel="modulepreload" crossorigin href="/TcgPlaceholderGen/assets/vendor-react-C0Dkio3Y.js">
-  <link rel="modulepreload" crossorigin href="/TcgPlaceholderGen/assets/vendor-ui-CEn83bkD.js">
-  <link rel="modulepreload" crossorigin href="/TcgPlaceholderGen/assets/vendor-utils-BEeV9v6Z.js">
+  <link rel="modulepreload" crossorigin href="/TcgPlaceholderGen/assets/vendor-ui-Dw1H3q_d.js">
+  <link rel="modulepreload" crossorigin href="/TcgPlaceholderGen/assets/vendor-utils-63Np9pHj.js">
   <link rel="modulepreload" crossorigin href="/TcgPlaceholderGen/assets/vendor-jspdf-Be6iWAV5.js">
   <link rel="modulepreload" crossorigin href="/TcgPlaceholderGen/assets/vendor-html2canvas-DXEQVQnt.js">
-  <link rel="stylesheet" crossorigin href="/TcgPlaceholderGen/assets/index-BaIzHUT0.css">
+  <link rel="stylesheet" crossorigin href="/TcgPlaceholderGen/assets/index-E0ZzzsZJ.css">
 </head>
 
 <body class="bg-slate-950 text-slate-50 antialiased">
@@ -45,9 +45,28 @@
     }, true);
 
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js');
-      });
+      if (window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1')) {
+        // Force unregister any existing service worker on localhost
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (let registration of registrations) {
+            registration.unregister().then(() => {
+              console.log('Successfully unregistered stale service worker on localhost');
+            }).catch(err => {
+              console.warn('Failed to unregister service worker (likely already removed):', err);
+            });
+          }
+        });
+      } else {
+        // Normal registration for production (GitHub Pages)
+        window.addEventListener('load', () => {
+          const swPath = window.location.pathname.includes('/TcgPlaceholderGen/')
+            ? '/TcgPlaceholderGen/sw.js'
+            : '/sw.js';
+          navigator.serviceWorker.register(swPath).catch(err => {
+            console.error('ServiceWorker registration failed: ', err);
+          });
+        });
+      }
     }
   </script>
 </body>
