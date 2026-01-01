@@ -44,7 +44,15 @@
       }
     }, true);
 
+    // Listen for service worker messages
     if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'CACHE_CLEARED') {
+          console.log('[App] Cache cleared by SW, reloading...');
+          window.location.reload(true);
+        }
+      });
+
       if (window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1')) {
         // Force unregister any existing service worker on localhost
         navigator.serviceWorker.getRegistrations().then(registrations => {
