@@ -430,7 +430,7 @@ const PrintView: React.FC<PrintViewProps> = ({ cards, onClose }) => {
                                     <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none flex items-center justify-center">
                                         {((settings.watermarkType === 'art' && card.images.small) || settings.watermarkType === 'placeholder') ? (
                                             <img
-                                                src={settings.watermarkType === 'art' ? card.images.small : pokemonCardBack}
+                                                src={settings.watermarkType === 'art' ? `${card.images.small}?cb=print_cors` : pokemonCardBack}
                                                 alt=""
                                                 key={`${card.id}-${settings.watermarkType}`}
                                                 className={`w-full h-full object-cover transition-opacity duration-300 ${settings.isGrayscale ? 'grayscale contrast-[0.9]' : ''

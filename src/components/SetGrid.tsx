@@ -14,7 +14,7 @@ const SetGrid: React.FC = () => {
     const [perPage, setPerPage] = useState<number>(24);
     const [currentPage, setCurrentPage] = useState(1);
     const [yearFrom, setYearFrom] = useState<number>(1999);
-    const [yearTo, setYearTo] = useState<number>(new Date().getFullYear());
+    const [yearTo, setYearTo] = useState<number | null>(null); // null = use max available
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
     // Auto-translate English search query to Japanese when language is ja and translation is OFF
@@ -43,6 +43,9 @@ const SetGrid: React.FC = () => {
         const uniqueYears = [...new Set(years)].sort((a, b) => a - b);
         return uniqueYears.length > 0 ? uniqueYears : Array.from({ length: 27 }, (_, i) => 1999 + i);
     }, [sets]);
+
+    // Compute effective yearTo (use max available if null)
+    const effectiveYearTo = yearTo ?? (availableYears.length > 0 ? availableYears[availableYears.length - 1] : new Date().getFullYear());
 
     // Apply filters and sorting
     const filteredSets = useMemo(() => {
@@ -85,7 +88,7 @@ const SetGrid: React.FC = () => {
         result = result.filter(set => {
             if (!set.releaseDate) return true;
             const year = parseInt(set.releaseDate.split('-')[0]);
-            return year >= yearFrom && year <= yearTo;
+            return year >= yearFrom && year <= effectiveYearTo;
         });
 
         // Sort
@@ -98,7 +101,7 @@ const SetGrid: React.FC = () => {
         });
 
         return result;
-    }, [sets, searchQuery, yearFrom, yearTo, sortOrder]);
+    }, [sets, searchQuery, yearFrom, effectiveYearTo, sortOrder]);
 
     // Pagination
     const totalPages = Math.ceil(filteredSets.length / perPage);
@@ -218,9 +221,9 @@ const SetGrid: React.FC = () => {
                         />
                         <span className="text-slate-500 text-sm">–</span>
                         <CustomDropdown
-                            value={yearTo.toString()}
+                            value={effectiveYearTo.toString()}
                             onChange={(v) => setYearTo(parseInt(v))}
-                            options={availableYears.map(y => ({ label: y.toString(), value: y.toString() }))}
+                            options={availableYears.filter(y => y >= yearFrom).map(y => ({ label: y.toString(), value: y.toString() }))}
                             className="w-24"
                         />
                     </div>
